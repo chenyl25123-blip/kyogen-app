@@ -1,0 +1,30 @@
+﻿# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.g.dart
+
+# Firebase secrets
+GoogleService-Info.plist
+google-services.json
+lib/firebase_options.dart
+.env
+
+# Functions
+functions/node_modules/
+functions/lib/
+functions/.runtimeconfig.json
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+xcuserdata/
+
+# Claude
+.claude/

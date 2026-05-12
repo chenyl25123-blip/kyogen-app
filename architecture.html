@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日も元気 — システム設計</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1f2933;
+    --border: #30363d; --border2: #444c56;
+    --teal: #7ba8b5; --peach: #e8a57c; --plum: #8e5973;
+    --green: #3fb950; --blue: #58a6ff; --purple: #bc8cff;
+    --orange: #f0883e; --red: #f85149;
+    --text: #e6edf3; --text2: #8b949e; --text3: #484f58;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    min-height: 100vh; padding: 40px 20px 80px;
+  }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 56px; }
+  .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+  .header h1 span { color: var(--teal); }
+  .header p { color: var(--text2); font-size: 13px; font-family: system-ui, sans-serif; }
+
+  /* ── Layer ── */
+  .layer {
+    max-width: 960px; margin: 0 auto 12px;
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .layer-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: background .15s;
+    user-select: none;
+  }
+  .layer-header:hover { background: rgba(255,255,255,.03); }
+  .layer-header.open { border-bottom-color: var(--border); }
+  .layer-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: .15em;
+    padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+  }
+  .layer-title { font-size: 15px; font-weight: 600; font-family: system-ui, sans-serif; flex: 1; }
+  .layer-subtitle { font-size: 12px; color: var(--text2); font-family: system-ui, sans-serif; }
+  .chevron { color: var(--text3); transition: transform .25s; font-size: 12px; }
+  .chevron.open { transform: rotate(90deg); }
+  .layer-body { display: none; padding: 20px; }
+  .layer-body.open { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+
+  /* ── Cards inside layers ── */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+    transition: border-color .15s, transform .15s;
+    cursor: default;
+  }
+  .card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .card-icon { font-size: 22px; margin-bottom: 10px; }
+  .card-name { font-size: 13px; font-weight: 700; font-family: system-ui, sans-serif; margin-bottom: 4px; }
+  .card-desc { font-size: 11px; color: var(--text2); line-height: 1.6; font-family: system-ui, sans-serif; }
+  .card-badge {
+    display: inline-block; margin-top: 8px;
+    font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    font-weight: 600; letter-spacing: .05em;
+  }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex; align-items: flex-start; gap: 0;
+    overflow-x: auto; padding-bottom: 8px;
+  }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 120px; flex: 1;
+  }
+  .flow-box {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    text-align: center; width: 100%;
+    font-size: 11px; font-family: system-ui, sans-serif; line-height: 1.5;
+  }
+  .flow-box .icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .flow-box .name { font-weight: 700; font-size: 12px; }
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 4px; margin-top: 24px;
+    color: var(--text3); font-size: 16px; flex-shrink: 0;
+  }
+  .flow-label {
+    margin-top: 6px; font-size: 10px; color: var(--text2);
+    font-family: system-ui, sans-serif; text-align: center;
+  }
+
+  /* ── Cron timeline ── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .tl-item {
+    position: relative; margin-bottom: 20px;
+    padding: 12px 14px; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: system-ui, sans-serif;
+  }
+  .tl-item::before {
+    content: ''; position: absolute;
+    left: -22px; top: 16px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg);
+  }
+  .tl-time { font-size: 11px; font-weight: 700; margin-bottom: 4px; font-family: monospace; }
+  .tl-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .tl-action { font-size: 11px; margin-top: 6px; font-weight: 600; }
+
+  /* ── Schema ── */
+  .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .schema-table {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .schema-header {
+    padding: 10px 14px; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+    font-family: system-ui, sans-serif;
+  }
+  .schema-header .tbl-icon { font-size: 14px; }
+  .schema-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 14px; font-size: 11px;
+    border-bottom: 1px solid rgba(48,54,61,.5);
+  }
+  .schema-row:last-child { border-bottom: none; }
+  .field-name { font-family: monospace; color: var(--blue); }
+  .field-type { color: var(--purple); font-family: monospace; }
+  .field-note { color: var(--text3); font-size: 10px; margin-left: 4px; }
+
+  /* ── Cost table ── */
+  .cost-table { width: 100%; border-collapse: collapse; font-family: system-ui, sans-serif; font-size: 12px; }
+  .cost-table th { text-align: left; padding: 8px 12px; color: var(--text2); font-weight: 600; border-bottom: 1px solid var(--border); }
+  .cost-table td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.4); }
+  .cost-table tr:last-child td { border-bottom: none; }
+  .cost-free { color: var(--green); font-weight: 700; }
+  .cost-paid { color: var(--peach); font-weight: 700; }
+
+  /* ── Connector lines (visual) ── */
+  .connector { text-align: center; color: var(--text3); font-size: 20px; line-height: 1; margin: 4px 0; }
+
+  /* ── Tags ── */
+  .tag-flutter  { background: rgba(84,197,249,.15); color: #54c5f9; border: 1px solid rgba(84,197,249,.3); }
+  .tag-firebase { background: rgba(240,136,62,.15);  color: var(--orange); border: 1px solid rgba(240,136,62,.3); }
+  .tag-resend   { background: rgba(123,168,181,.15); color: var(--teal); border: 1px solid rgba(123,168,181,.3); }
+  .tag-google   { background: rgba(63,185,80,.15);   color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .tag-free     { background: rgba(63,185,80,.12);   color: var(--green); border: 1px solid rgba(63,185,80,.25); }
+  .tag-paid     { background: rgba(240,136,62,.12);  color: var(--orange); border: 1px solid rgba(240,136,62,.25); }
+
+  /* ── Stack overview (top visual) ── */
+  .stack { max-width: 960px; margin: 0 auto 32px; }
+  .stack-row {
+    display: flex; gap: 8px; margin-bottom: 8px;
+    align-items: stretch;
+  }
+  .stack-box {
+    flex: 1; padding: 12px 16px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg2);
+    font-family: system-ui, sans-serif;
+  }
+  .stack-box.highlight { border-color: var(--teal); background: rgba(123,168,181,.06); }
+  .stack-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px; }
+  .stack-value { font-size: 14px; font-weight: 700; }
+  .stack-note  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* ── Env vars ── */
+  .env-block {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+    font-family: monospace; font-size: 12px; line-height: 2;
+  }
+  .env-comment { color: var(--text3); }
+  .env-key { color: var(--blue); }
+  .env-val { color: var(--green); }
+  .env-placeholder { color: var(--peach); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>今日も元気 <span>— システム設計</span></h1>
+  <p>Firebase Blaze + Resend · Flutter iOS · v1.0 Architecture</p>
+</div>
+
+<!-- ── Stack Summary ── -->
+<div class="stack">
+  <div class="stack-row">
+    <div class="stack-box highlight">
+      <div class="stack-label">Frontend</div>
+      <div class="stack-value">Flutter (iOS first)</div>
+      <div class="stack-note">Dart · FlutterFire SDK</div>
+    </div>
+    <div class="stack-box highlight">
+      <div class="stack-label">Auth</div>
+      <div class="stack-value">Firebase Auth</div>
+      <div class="stack-note">Google Sign-In · Anonymous</div>
+    </div>
+    <div class="stack-box highlight">
+      <div class="stack-label">Database</div>
+      <div class="stack-value">Cloud Firestore</div>
+      <div class="stack-note">NoSQL · realtime sync</div>
+    </div>
+  </div>
+  <div class="stack-row">
+    <div class="stack-box">
+      <div class="stack-label">Background Jobs</div>
+      <div class="stack-value">Cloud Functions</div>
+      <div class="stack-note">Node.js · pubsub cron</div>
+    </div>
+    <div class="stack-box">
+      <div class="stack-label">Push Notifications</div>
+      <div class="stack-value">Firebase Cloud Messaging</div>
+      <div class="stack-note">APNs bridge · free</div>
+    </div>
+    <div class="stack-box">
+      <div class="stack-label">Email</div>
+      <div class="stack-value">Resend API</div>
+      <div class="stack-note">3,000封/月 free tier</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 1: Flutter App ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-flutter">Layer 1</span>
+    <span class="layer-title">Flutter App（クライアント）</span>
+    <span class="layer-subtitle">画面・状態管理・Firebase SDK</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📱</div>
+        <div class="card-name">screens/</div>
+        <div class="card-desc">OnboardingScreen · HomeScreen · ContactScreen · SettingsScreen<br><br>各画面は独立した StatefulWidget</div>
+        <span class="card-badge tag-flutter">Flutter</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <div class="card-name">services/CheckInService</div>
+        <div class="card-desc">
+          <b>checkIn()</b> → Firestore に書き込み<br>
+          <b>getStatus()</b> → 今日/昨日の確認状態を計算<br>
+          <b>getHistory(7)</b> → 直近7日のデータ取得
+        </div>
+        <span class="card-badge tag-firebase">Firestore</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">👤</div>
+        <div class="card-name">services/AuthService</div>
+        <div class="card-desc">
+          <b>signInWithGoogle()</b><br>
+          <b>signInAnonymously()</b><br>
+          <b>linkGoogleAccount()</b> → 匿名→Google昇格<br>
+          <b>currentUser</b> → Stream&lt;User?&gt;
+        </div>
+        <span class="card-badge tag-google">Firebase Auth</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">📬</div>
+        <div class="card-name">services/ContactService</div>
+        <div class="card-desc">
+          <b>saveContact()</b> → Firestore保存 + Cloud Function をトリガー（確認メール送信）<br>
+          <b>getContact()</b> → 連絡先データ取得
+        </div>
+        <span class="card-badge tag-firebase">Firestore</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔔</div>
+        <div class="card-name">services/NotificationService</div>
+        <div class="card-desc">
+          <b>requestPermission()</b><br>
+          <b>saveFcmToken()</b> → Firestore に保存<br>
+          <b>setupLocalNotification()</b> → 毎日21時のローカル通知
+        </div>
+        <span class="card-badge tag-firebase">FCM + APNs</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <div class="card-name">theme/AppTheme</div>
+        <div class="card-desc">
+          柔軟パステルカラーシステム<br>
+          --teal / --peach / --plum<br>
+          全ウィジェットに適用
+        </div>
+        <span class="card-badge tag-flutter">Flutter</span>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;font-family:system-ui,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.1em">pubspec.yaml 主要依存関係</div>
+      <div class="env-block">
+        <span class="env-comment"># Firebase</span><br>
+        <span class="env-key">firebase_core</span>: ^3.x<br>
+        <span class="env-key">firebase_auth</span>: ^5.x<br>
+        <span class="env-key">cloud_firestore</span>: ^5.x<br>
+        <span class="env-key">firebase_messaging</span>: ^15.x<br>
+        <span class="env-comment"># Auth</span><br>
+        <span class="env-key">google_sign_in</span>: ^6.x<br>
+        <span class="env-comment"># UI / UX</span><br>
+        <span class="env-key">flutter_local_notifications</span>: ^17.x<br>
+        <span class="env-key">haptic_feedback</span>: ^0.x<br>
+        <span class="env-key">shared_preferences</span>: ^2.x<br>
+        <span class="env-comment"># State management</span><br>
+        <span class="env-key">riverpod</span>: ^2.x &nbsp;<span class="env-comment"># or provider</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 2: Firestore Schema ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-firebase">Layer 2</span>
+    <span class="layer-title">Cloud Firestore — データ設計</span>
+    <span class="layer-subtitle">3コレクション · NoSQL</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+    <div class="schema-grid">
+
+      <div class="schema-table">
+        <div class="schema-header">
+          <span class="tbl-icon">👤</span>
+          users/{userId}
+        </div>
+        <div class="schema-row"><span class="field-name">uid</span><span><span class="field-type">string</span><span class="field-note">PK · Firebase Auth UID</span></span></div>
+        <div class="schema-row"><span class="field-name">createdAt</span><span><span class="field-type">timestamp</span></span></div>
+        <div class="schema-row"><span class="field-name">fcmToken</span><span><span class="field-type">string</span><span class="field-note">プッシュ通知用</span></span></div>
+        <div class="schema-row"><span class="field-name">paused</span><span><span class="field-type">boolean</span><span class="field-note">機能停止中</span></span></div>
+        <div class="schema-row"><span class="field-name">googleLinked</span><span><span class="field-type">boolean</span></span></div>
+        <div class="schema-row"><span class="field-name">lastNotifiedAt</span><span><span class="field-type">timestamp?</span><span class="field-note">メール送信済み日時</span></span></div>
+        <div class="schema-row"><span class="field-name">emailSentCount</span><span><span class="field-type">number</span><span class="field-note">送信回数制限用</span></span></div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header">
+          <span class="tbl-icon">📬</span>
+          users/{userId}/contact
+        </div>
+        <div class="schema-row"><span class="field-name">name</span><span><span class="field-type">string</span></span></div>
+        <div class="schema-row"><span class="field-name">email</span><span><span class="field-type">string</span></span></div>
+        <div class="schema-row"><span class="field-name">relationship</span><span><span class="field-type">string?</span><span class="field-note">続柄</span></span></div>
+        <div class="schema-row"><span class="field-name">confirmedAt</span><span><span class="field-type">timestamp?</span><span class="field-note">確認メール送信済</span></span></div>
+        <div class="schema-row"><span class="field-name">updatedAt</span><span><span class="field-type">timestamp</span></span></div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header">
+          <span class="tbl-icon">✅</span>
+          users/{userId}/checkins/{date}
+        </div>
+        <div class="schema-row"><span class="field-name">date</span><span><span class="field-type">string</span><span class="field-note">KEY: "2025-11-15"</span></span></div>
+        <div class="schema-row"><span class="field-name">checkedAt</span><span><span class="field-type">timestamp</span><span class="field-note">実際の確認時刻</span></span></div>
+        <div class="schema-row"><span class="field-name">timezone</span><span><span class="field-type">string</span><span class="field-note">"Asia/Tokyo"</span></span></div>
+        <div style="padding:10px 14px;font-size:11px;color:var(--text2);font-family:system-ui,sans-serif;line-height:1.6">
+          📌 ドキュメントID = 日付文字列<br>
+          存在する = その日確認済み<br>
+          存在しない = 未確認
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;font-size:12px;font-family:system-ui,sans-serif;line-height:1.7;color:var(--text2)">
+      🔒 <b style="color:var(--text)">Firestore Security Rules</b><br>
+      各ユーザーは自分のデータのみ read/write 可能。<br>
+      Cloud Functions は Admin SDK 経由でアクセス（セキュリティルール適用外）。<br>
+      <code style="color:var(--blue)">match /users/{userId}/{document=**} { allow read, write: if request.auth.uid == userId; }</code>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 3: Cloud Functions ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-firebase">Layer 3</span>
+    <span class="layer-title">Cloud Functions — バックグラウンド処理</span>
+    <span class="layer-subtitle">定時チェック · メール送信 · 通知</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px;font-family:system-ui,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.1em">毎日の処理フロー（JST 09:00実行）</div>
+      <div class="timeline">
+
+        <div class="tl-item" style="--dot-color:var(--green)">
+          <div style="position:absolute;left:-22px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg)"></div>
+          <div class="tl-time">09:00 JST — dailyCheckJob</div>
+          <div class="tl-desc">全ユーザーの users コレクションを走査。paused=true のユーザーはスキップ。</div>
+        </div>
+
+        <div class="tl-item">
+          <div style="position:absolute;left:-22px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)"></div>
+          <div class="tl-time">各ユーザー — 状態判定</div>
+          <div class="tl-desc">checkins/{today} が存在 → safe (スキップ)<br>
+          checkins/{today} なし, checkins/{yesterday} あり → pending (スキップ)<br>
+          checkins/{yesterday} なし, checkins/{2-days-ago} あり → <b style="color:var(--peach)">warn → FCM push送信</b><br>
+          上記以外 → <b style="color:var(--plum)">alert → メール送信（1回のみ）</b></div>
+        </div>
+
+        <div class="tl-item">
+          <div style="position:absolute;left:-22px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--peach);border:2px solid var(--bg)"></div>
+          <div class="tl-time">warn 状態 — FCM Push 送信</div>
+          <div class="tl-desc">users/{uid}.fcmToken へ Firebase Admin でプッシュ送信<br>タイトル: 「昨日から確認がありません」<br>本文: 「明日までに確認しないと緊急連絡先へメールが届きます」</div>
+          <div class="tl-action" style="color:var(--peach)">→ users/{uid}.fcmToken 使用 · 無料</div>
+        </div>
+
+        <div class="tl-item">
+          <div style="position:absolute;left:-22px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--plum);border:2px solid var(--bg)"></div>
+          <div class="tl-time">alert 状態 — Resend メール送信</div>
+          <div class="tl-desc">
+            <b>条件:</b> users/{uid}.lastNotifiedAt が今日でない（重複送信防止）<br>
+            contact.email へ Resend API で送信<br>
+            件名: 「○○さんの様子をご確認ください」<br>
+            送信後: lastNotifiedAt = now, emailSentCount++ を更新
+          </div>
+          <div class="tl-action" style="color:var(--plum)">→ Resend API · 3,000封/月無料</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <div class="card-name">dailyCheckJob</div>
+        <div class="card-desc">
+          <code>schedule('every day 00:00')</code><br>
+          timezone: Asia/Tokyo<br>
+          全ユーザーを並列処理（Promise.all）<br>
+          実行時間: 通常 &lt; 10秒
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📨</div>
+        <div class="card-name">onContactSaved</div>
+        <div class="card-desc">
+          Firestore トリガー<br>
+          contact ドキュメント作成/更新時に発火<br>
+          → Resend で「確認メール」を連絡先へ送信
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <div class="card-name">onUserCreated</div>
+        <div class="card-desc">
+          Auth トリガー<br>
+          新規ユーザー作成時に発火<br>
+          → users/{uid} ドキュメントを初期化
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;font-family:system-ui,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.1em">Cloud Function コードイメージ</div>
+      <div class="env-block">
+<span class="env-comment">// functions/src/dailyCheck.ts</span>
+<span class="env-key">exports.dailyCheckJob</span> = functions
+  .region(<span class="env-val">'asia-northeast1'</span>) <span class="env-comment">// Tokyo</span>
+  .pubsub.schedule(<span class="env-val">'every day 00:00'</span>)
+  .timeZone(<span class="env-val">'Asia/Tokyo'</span>)
+  .onRun(<span class="env-key">async</span> (context) => {
+    <span class="env-key">const</span> users = <span class="env-key">await</span> db.collection(<span class="env-val">'users'</span>).get();
+    <span class="env-key">const</span> today = getJSTDateString(); <span class="env-comment">// "2025-11-15"</span>
+    <span class="env-key">const</span> yesterday = getJSTDateString(-<span class="env-val">1</span>);
+    <span class="env-key">const</span> twoDaysAgo = getJSTDateString(-<span class="env-val">2</span>);
+
+    <span class="env-key">await</span> Promise.all(users.docs.map(<span class="env-key">async</span> (userDoc) => {
+      <span class="env-key">const</span> { paused, fcmToken, lastNotifiedAt } = userDoc.data();
+      <span class="env-key">if</span> (paused) <span class="env-key">return</span>; <span class="env-comment">// 機能停止中はスキップ</span>
+
+      <span class="env-key">const</span> todayCI = <span class="env-key">await</span> checkInExists(userDoc.id, today);
+      <span class="env-key">if</span> (todayCI) <span class="env-key">return</span>; <span class="env-comment">// 確認済み</span>
+
+      <span class="env-key">const</span> yesterdayCI = <span class="env-key">await</span> checkInExists(userDoc.id, yesterday);
+      <span class="env-key">const</span> twoDaysCI = <span class="env-key">await</span> checkInExists(userDoc.id, twoDaysAgo);
+
+      <span class="env-key">if</span> (!yesterdayCI && twoDaysCI) {
+        <span class="env-key">await</span> sendPushNotification(fcmToken); <span class="env-comment">// warn</span>
+      }
+      <span class="env-key">if</span> (!yesterdayCI && !twoDaysCI) {
+        <span class="env-key">if</span> (!isSameDay(lastNotifiedAt, today)) { <span class="env-comment">// 重複防止</span>
+          <span class="env-key">await</span> sendEmergencyEmail(userDoc.id); <span class="env-comment">// alert</span>
+        }
+      }
+    }));
+  });
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 4: Resend Email ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-resend">Layer 4</span>
+    <span class="layer-title">Resend — メール設計</span>
+    <span class="layer-subtitle">2種類のメール · 日本語テンプレート</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📨</div>
+        <div class="card-name">① 確認メール（連絡先登録時）</div>
+        <div class="card-desc">
+          <b>To:</b> 緊急連絡先のメール<br>
+          <b>件名:</b> 「あなたは○○さんの緊急連絡先に登録されました」<br>
+          <b>本文:</b> アプリの説明、同意確認リンク<br>
+          <b>目的:</b> 連絡先の合意取得・スパム防止
+        </div>
+        <span class="card-badge tag-resend">送信タイミング: 登録時1回</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🆘</div>
+        <div class="card-name">② 緊急通知メール（3日未確認時）</div>
+        <div class="card-desc">
+          <b>To:</b> 緊急連絡先のメール<br>
+          <b>件名:</b> 「○○さんの様子をご確認ください」<br>
+          <b>本文:</b> 「3日間応答がありません。手違いの可能性もあります。念のためご確認ください。」<br>
+          <b>重要:</b> 「死」「緊急」の文言を使わない
+        </div>
+        <span class="card-badge tag-resend">送信タイミング: 1ユーザー1回のみ</span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;font-family:system-ui,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.1em">Resend API 呼び出し例</div>
+      <div class="env-block">
+<span class="env-key">import</span> { Resend } <span class="env-key">from</span> <span class="env-val">'resend'</span>;
+<span class="env-key">const</span> resend = <span class="env-key">new</span> Resend(process.env.RESEND_API_KEY);
+
+<span class="env-key">await</span> resend.emails.send({
+  from: <span class="env-val">'今日も元気 &lt;noreply@kyogen.app&gt;'</span>,
+  to: contact.email,
+  subject: <span class="env-val">`${userName}さんの様子をご確認ください`</span>,
+  html: emergencyEmailTemplate(userName),
+  headers: {
+    <span class="env-val">'List-Unsubscribe'</span>: <span class="env-val">'&lt;mailto:unsubscribe@kyogen.app&gt;'</span>
+  }
+});
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 5: Cost ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-free">Layer 5</span>
+    <span class="layer-title">コスト試算</span>
+    <span class="layer-subtitle">初期 $0 → 1万ユーザーで ~$25/月</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+    <table class="cost-table">
+      <tr>
+        <th>サービス</th>
+        <th>無料枠</th>
+        <th>~500ユーザー</th>
+        <th>~5,000ユーザー</th>
+        <th>~10,000ユーザー</th>
+      </tr>
+      <tr>
+        <td>Firestore 読み取り</td>
+        <td>50,000回/日</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-paid">~$5</td>
+      </tr>
+      <tr>
+        <td>Cloud Functions</td>
+        <td>200万回/月</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+      </tr>
+      <tr>
+        <td>Firebase Auth</td>
+        <td>無制限</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+      </tr>
+      <tr>
+        <td>FCM Push通知</td>
+        <td>無制限</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-free">$0</td>
+      </tr>
+      <tr>
+        <td>Resend メール</td>
+        <td>3,000封/月</td>
+        <td class="cost-free">$0</td>
+        <td class="cost-paid">$20</td>
+        <td class="cost-paid">$20</td>
+      </tr>
+      <tr style="font-weight:700">
+        <td>合計</td>
+        <td>—</td>
+        <td class="cost-free">$0/月</td>
+        <td class="cost-paid">~$20/月</td>
+        <td class="cost-paid">~$25/月</td>
+      </tr>
+    </table>
+    <div style="margin-top:12px;padding:12px 14px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);border-radius:10px;font-size:12px;font-family:system-ui,sans-serif;color:var(--text2);line-height:1.7">
+      💡 5,000ユーザー達成時点でアプリ内課金（月額500円 = $3.3）の10%でも収益があれば、<br>
+      月収 <b style="color:var(--green)">$1,650</b> vs インフラコスト <b style="color:var(--peach)">$20</b> で十分ペイします。
+    </div>
+  </div>
+</div>
+
+<!-- ── Layer 6: Env Setup ── -->
+<div class="layer">
+  <div class="layer-header" onclick="toggle(this)">
+    <span class="layer-tag tag-firebase">Layer 6</span>
+    <span class="layer-title">環境構築チェックリスト</span>
+    <span class="layer-subtitle">Firebase設定 → Resend → Codemagic</span>
+    <span class="chevron">▶</span>
+  </div>
+  <div class="layer-body">
+    <div style="font-family:system-ui,sans-serif;font-size:13px;line-height:2">
+      <div style="margin-bottom:20px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--blue)">① Firebase セットアップ</div>
+        <div style="color:var(--text2)">
+          □ Firebase Console でプロジェクト作成<br>
+          □ iOS App 登録（Bundle ID: jp.kyogen.app など）<br>
+          □ GoogleService-Info.plist をダウンロード → Flutter プロジェクトに配置<br>
+          □ Blaze プランへアップグレード（クレカ登録のみ、課金は発生しない）<br>
+          □ Firestore データベース作成（asia-northeast1 / Tokyo）<br>
+          □ Authentication → Google Sign-In 有効化<br>
+          □ Cloud Functions デプロイ（<code>firebase deploy --only functions</code>）
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--teal)">② Resend セットアップ</div>
+        <div style="color:var(--text2)">
+          □ resend.com でアカウント作成<br>
+          □ ドメイン設定（独自ドメインがあれば理想、なくても noreply@resend.dev で可）<br>
+          □ API Key 発行<br>
+          □ Firebase Functions の環境変数に設定: <code>firebase functions:config:set resend.key="re_xxx"</code>
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--orange)">③ APNs（iOS Push通知）</div>
+        <div style="color:var(--text2)">
+          □ Apple Developer Console → Certificates → APNs キー作成<br>
+          □ .p8 ファイルを Firebase Console → Project Settings → Cloud Messaging にアップロード<br>
+          □ FCM は自動で APNs をブリッジ → コード側は FCM だけ書けばOK
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;color:var(--purple)">④ Codemagic（クラウドビルド）</div>
+        <div style="color:var(--text2)">
+          □ codemagic.io アカウント作成<br>
+          □ GitHub リポジトリ連携<br>
+          □ Apple Developer 証明書・Provisioning Profile を Codemagic に登録<br>
+          □ GoogleService-Info.plist を Codemagic の Environment Variables に設定（セキュリティ）<br>
+          □ codemagic.yaml をリポジトリのルートに配置<br>
+          □ push → 自動ビルド → .ipa 生成 → TestFlight 自動アップロード
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.chevron');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+// 最初の2つを開いた状態にする
+document.querySelectorAll('.layer-header').forEach((h, i) => {
+  if (i < 2) toggle(h);
+});
+</script>
+</body>
+</html>

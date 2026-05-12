@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>今日も元気</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+    /* ── 柔軟パステル Design Tokens ── */
+    :root {
+        --bg:        #f5f3f8;
+        --bg2:       #ffffff;
+        --bg3:       #eeebf4;
+        --border:    #e2dded;
+        --border2:   #cfc8e0;
+
+        --teal:      #7ba8b5;   /* 確認済み・安全 */
+        --teal-dim:  rgba(123,168,181,.13);
+        --teal-glow: rgba(123,168,181,.28);
+        --peach:     #e8a57c;   /* 警告 */
+        --peach-dim: rgba(232,165,124,.13);
+        --plum:      #8e5973;   /* 緊急 */
+        --plum-dim:  rgba(142,89,115,.13);
+
+        --text:      #3a3645;
+        --text2:     #7a7390;
+        --text3:     #b0a8c4;
+    }
+
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+    html, body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'DM Sans', 'Zen Maru Gothic', sans-serif;
+        margin: 0; padding: 0;
+        min-height: 100vh; min-height: 100dvh;
+        overflow-x: hidden;
+    }
+
+    button {
+        cursor: pointer; -webkit-appearance: none;
+        border: none; font-family: inherit; color: inherit; background: transparent;
+    }
+
+    /* ── 画面 ── */
+    .screen {
+        display: none; min-height: 100vh; min-height: 100dvh;
+        flex-direction: column;
+        padding-top: max(env(safe-area-inset-top), 50px);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .screen.active { display: flex; animation: fadeUp .32s ease; }
+    @keyframes fadeUp {
+        from { opacity:0; transform:translateY(8px); }
+        to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── カード / 入力 ── */
+    .card { background:var(--bg2); border:1px solid var(--border); border-radius:20px; }
+    input, textarea {
+        -webkit-appearance:none;
+        background:var(--bg3); border:1px solid var(--border);
+        color:var(--text); font-size:16px; font-family:inherit;
+        border-radius:14px; padding:14px 16px; width:100%;
+    }
+    input:focus, textarea:focus { outline:none; border-color:var(--teal); }
+    textarea { resize:none; }
+    ::-webkit-scrollbar { display:none; }
+
+    /* ── ナビ ── */
+    .bottom-nav {
+        position:fixed; bottom:0; left:0; right:0;
+        background:rgba(245,243,248,.96);
+        border-top:1px solid var(--border);
+        backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+        padding-bottom:max(env(safe-area-inset-bottom),8px);
+        z-index:30;
+    }
+    .bottom-nav-spacer { height:calc(72px + env(safe-area-inset-bottom)); }
+
+    /* ── デモバー ── */
+    .demo-bar {
+        background:rgba(123,168,181,.08);
+        border-bottom:1px solid rgba(123,168,181,.18);
+        padding-top:max(env(safe-area-inset-top),8px);
+    }
+
+    /* ── チェックインボタン ── */
+    #btnCheckIn { position:relative; transition:transform .12s ease; }
+    #btnCheckIn:active { transform:scale(.91); }
+
+    /* 呼吸リング */
+    @keyframes breathe {
+        0%,100% { transform:scale(1); opacity:.45; }
+        50%      { transform:scale(1.24); opacity:0; }
+    }
+    .ring-safe::before {
+        content:''; position:absolute; inset:-6px; border-radius:50%;
+        border:2px solid var(--teal);
+        animation:breathe 3.4s ease-in-out infinite;
+        pointer-events:none;
+    }
+    @keyframes pulse-warn {
+        0%,100% { transform:scale(1); opacity:.55; }
+        50%      { transform:scale(1.2); opacity:0; }
+    }
+    .ring-warn::before {
+        content:''; position:absolute; inset:-6px; border-radius:50%;
+        border:2px solid var(--peach);
+        animation:pulse-warn 1.8s ease-in-out infinite;
+        pointer-events:none;
+    }
+    @keyframes pulse-alert {
+        0%,100% { transform:scale(1); opacity:.65; }
+        50%      { transform:scale(1.18); opacity:0; }
+    }
+    .ring-alert::before {
+        content:''; position:absolute; inset:-6px; border-radius:50%;
+        border:2px solid var(--plum);
+        animation:pulse-alert 1.1s ease-in-out infinite;
+        pointer-events:none;
+    }
+    .ring-alert::after {
+        content:''; position:absolute; inset:-16px; border-radius:50%;
+        border:1.5px solid rgba(142,89,115,.28);
+        animation:pulse-alert 1.1s ease-in-out infinite .3s;
+        pointer-events:none;
+    }
+
+    /* 成功ポップ */
+    @keyframes popIn {
+        0%   { transform:scale(.7) rotate(-12deg); opacity:0; }
+        60%  { transform:scale(1.15) rotate(4deg); opacity:1; }
+        100% { transform:scale(1) rotate(0); opacity:1; }
+    }
+    .pop-in { animation:popIn .42s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+    /* 背景グラデ */
+    body { transition:background .9s ease; }
+    body.bg-safe    { background:radial-gradient(ellipse at 50% 0%, rgba(123,168,181,.12) 0%, var(--bg) 55%); }
+    body.bg-pending { background:radial-gradient(ellipse at 50% 0%, rgba(232,165,124,.1) 0%, var(--bg) 55%); }
+    body.bg-alert   { background:radial-gradient(ellipse at 50% 0%, rgba(142,89,115,.1) 0%, var(--bg) 55%); }
+
+    @keyframes sFade { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
+    .s-anim { animation:sFade .3s ease; }
+
+    /* カレンダー */
+    .day-dot {
+        width:30px; height:30px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; transition:all .3s;
+    }
+    .day-dot.checked          { background:var(--teal); color:#fff; }
+    .day-dot.missed           { background:rgba(142,89,115,.1); border:1px solid rgba(142,89,115,.25); color:var(--plum); }
+    .day-dot.today-unchecked  { border:2px dashed var(--border2); color:var(--text3); }
+    .day-dot.today-checked    { background:var(--teal); border:2px solid var(--bg2); color:#fff; box-shadow:0 0 0 2px var(--teal); }
+
+    /* モーダル */
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .sheet { animation:slideUp .3s cubic-bezier(.32,.72,0,1); }
+    .backdrop { background:rgba(58,54,69,.5); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+
+    /* トグル */
+    .toggle {
+        width:48px; height:28px; border-radius:999px;
+        background:var(--bg3); border:1px solid var(--border);
+        position:relative; transition:background .2s; flex-shrink:0; cursor:pointer;
+    }
+    .toggle.on { background:var(--teal); border-color:var(--teal); }
+    .toggle::after {
+        content:''; position:absolute; top:2px; left:2px;
+        width:22px; height:22px; background:#fff; border-radius:50%; transition:transform .2s;
+        box-shadow:0 1px 3px rgba(0,0,0,.15);
+    }
+    .toggle.on::after { transform:translateX(20px); }
+
+    .logo-dot { display:inline-block; width:7px; height:7px; background:var(--teal); border-radius:50%; vertical-align:middle; margin-left:3px; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .blink { animation:blink 2.4s ease-in-out infinite; }
+    button:active { opacity:.72; transform:scale(.97); }
+    .no-active:active { opacity:1; transform:none; }
+    .star { font-size:30px; cursor:pointer; transition:transform .15s; }
+    .star:active { transform:scale(1.35); }
+
+    /* iOS風プッシュ */
+    .push-notification {
+        position:fixed; top:0; left:0; right:0;
+        margin:8px;
+        margin-top:max(env(safe-area-inset-top),8px);
+        background:rgba(255,255,255,.94);
+        backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+        border:1px solid var(--border);
+        border-radius:20px; padding:12px 14px;
+        z-index:100;
+        box-shadow:0 8px 32px rgba(58,54,69,.12), 0 2px 8px rgba(58,54,69,.06);
+        transform:translateY(-160%); opacity:0;
+        transition:transform .48s cubic-bezier(.32,.72,0,1), opacity .28s ease;
+        cursor:pointer;
+    }
+    .push-notification.show { transform:translateY(0); opacity:1; }
+    .push-notification:active { transform:translateY(0) scale(.98); }
+    .push-icon {
+        width:32px; height:32px; border-radius:9px;
+        background:linear-gradient(135deg,var(--teal),#5a8a96);
+        display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+
+    /* Googleボタン */
+    .google-btn {
+        display:flex; align-items:center; justify-content:center; gap:10px;
+        width:100%; padding:14px; border-radius:14px;
+        background:#fff; border:1.5px solid var(--border);
+        font-size:15px; font-weight:600; color:var(--text);
+        box-shadow:0 2px 8px rgba(58,54,69,.06);
+        transition:all .15s;
+    }
+    .google-btn:active { background:var(--bg3); transform:scale(.98); }
+
+    /* 機能停止バナー */
+    .pause-banner {
+        background:linear-gradient(90deg,rgba(232,165,124,.15),rgba(232,165,124,.08));
+        border:1px solid rgba(232,165,124,.35); border-radius:14px;
+        padding:12px 16px; display:flex; align-items:center; gap:12px;
+    }
+    </style>
+</head>
+<body class="bg-pending">
+
+<!-- デモバー -->
+<div class="demo-bar fixed top-0 left-0 right:0 z-50 px-4 py-2 flex items-center justify-between text-[10px] uppercase tracking-wider" style="right:0">
+    <span style="color:var(--teal)">● DEMO</span>
+    <button type="button" id="btnSkipDay" class="px-2 py-1 rounded-lg text-[10px] font-semibold" style="background:rgba(123,168,181,.12);color:var(--teal)">⏩ 翌日へ</button>
+    <button type="button" id="btnTopReset" style="color:var(--text3)">↻ RESET</button>
+</div>
+
+<!-- ══════════════════ 引導 ══════════════════ -->
+<div id="screen-onboarding" class="screen active">
+    <div class="flex-1 flex flex-col px-8">
+        <div class="mt-10 text-center">
+            <div class="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl"
+                 style="background:linear-gradient(135deg,var(--teal),#5a8a96);box-shadow:0 16px 40px rgba(123,168,181,.3)">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold tracking-wide mb-2" style="color:var(--text);font-family:'Zen Maru Gothic',sans-serif">今日も元気</h1>
+            <p class="text-[11px] tracking-widest uppercase mb-10" style="color:var(--text3)">Daily Check-in</p>
+        </div>
+
+        <div class="space-y-5 mb-10">
+            <div class="flex gap-4 items-start">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:var(--teal-dim);border:1px solid rgba(123,168,181,.3)">
+                    <span class="text-sm font-bold" style="color:var(--teal)">1</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold mb-1">毎日1回、ボタンをタップ</h3>
+                    <p class="text-sm leading-relaxed" style="color:var(--text2)">朝でも夜でも、時間は自由。1日1回だけ。</p>
+                </div>
+            </div>
+            <div class="flex gap-4 items-start">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:var(--teal-dim);border:1px solid rgba(123,168,181,.3)">
+                    <span class="text-sm font-bold" style="color:var(--teal)">2</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold mb-1">2日間未確認でプッシュ通知</h3>
+                    <p class="text-sm leading-relaxed" style="color:var(--text2)">まず自分へ警告が届きます。</p>
+                </div>
+            </div>
+            <div class="flex gap-4 items-start">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:var(--teal-dim);border:1px solid rgba(123,168,181,.3)">
+                    <span class="text-sm font-bold" style="color:var(--teal)">3</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold mb-1">3日目に緊急連絡先へメール</h3>
+                    <p class="text-sm leading-relaxed" style="color:var(--text2)">登録した相手に「○○さんの様子をご確認ください」が届きます。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-auto pb-8">
+            <button type="button" id="btnStartOnboarding" class="w-full font-bold py-4 rounded-2xl text-base" style="background:var(--teal);color:#fff;font-family:'Zen Maru Gothic',sans-serif">
+                はじめる
+            </button>
+            <p class="text-center text-xs mt-4" style="color:var(--text3)">無料・登録不要</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════ メイン ══════════════════ -->
+<div id="screen-home" class="screen">
+    <div class="flex-1 flex flex-col">
+
+        <div class="px-6 pt-4 pb-3 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide" style="font-family:'Zen Maru Gothic',sans-serif">今日も元気<span class="logo-dot"></span></h1>
+                <p class="text-[10px] mt-0.5 uppercase tracking-widest" style="color:var(--text3)">Daily Check-in</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+                <span id="statusDot" class="w-2 h-2 rounded-full blink" style="background:var(--peach)"></span>
+                <span id="statusLabel" style="color:var(--text2)">未確認</span>
+            </div>
+        </div>
+
+        <!-- 機能停止バナー (停止中のみ表示) -->
+        <div id="pauseBanner" class="mx-6 mb-3 pause-banner" style="display:none">
+            <svg class="w-5 h-5 flex-shrink-0" style="color:var(--peach)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1">
+                <p class="text-sm font-semibold" style="color:var(--peach)">機能停止中</p>
+                <p class="text-xs" style="color:var(--text2)">通知もメールも送信されません</p>
+            </div>
+            <button type="button" id="btnResume" class="text-xs font-bold px-3 py-1.5 rounded-lg" style="background:var(--peach);color:#fff">再開</button>
+        </div>
+
+        <!-- ステータス -->
+        <div class="px-6 mb-4 text-center">
+            <p id="statusBig" class="text-2xl font-bold mb-1 s-anim" style="color:var(--peach);font-family:'Zen Maru Gothic',sans-serif">本日 未確認</p>
+            <p id="statusSub" class="text-sm s-anim" style="color:var(--text2)">今日中にタップしてください</p>
+        </div>
+
+        <!-- カレンダー -->
+        <div class="px-6 mb-5">
+            <div id="calendar" class="flex justify-between items-center"></div>
+        </div>
+
+        <!-- チェックインボタン -->
+        <div class="flex-1 flex items-center justify-center">
+            <div class="relative flex items-center justify-center">
+                <div id="glowRing" class="absolute w-64 h-64 rounded-full" style="background:radial-gradient(circle,rgba(232,165,124,.14) 0%,transparent 70%);transition:background .8s ease"></div>
+                <button type="button" id="btnCheckIn" class="relative w-56 h-56 rounded-full flex flex-col items-center justify-center no-active ring-warn" style="background:var(--bg2);border:3px solid var(--border);">
+                    <svg id="checkInIcon" class="w-14 h-14 mb-2" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span id="checkInLabel" class="text-sm font-bold text-center px-4" style="color:var(--text3);font-family:'Zen Maru Gothic',sans-serif">今日も元気！</span>
+                    <div id="ripple" class="absolute inset-0 rounded-full pointer-events-none opacity-0" style="background:radial-gradient(circle,rgba(123,168,181,.22) 0%,transparent 70%)"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 前回 -->
+        <div class="px-6 mt-4 mb-2">
+            <div class="card p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] uppercase tracking-wider mb-1" style="color:var(--text3)">前回の確認</p>
+                        <p id="lastCheckIn" class="text-sm" style="color:var(--text2)">まだ確認していません</p>
+                    </div>
+                    <svg class="w-5 h-5" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bottom-nav-spacer"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="flex justify-around items-center pt-2">
+            <button type="button" data-nav="home" class="flex flex-col items-center py-2 px-4" style="color:var(--teal)">
+                <svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4 7v10c0 5.55 3.84 9.74 9 9 5.16.74 9-3.45 9-9V7l-8-5z"/></svg>
+                <span class="text-[9px] uppercase tracking-wider">元気</span>
+            </button>
+            <button type="button" data-nav="contact" class="flex flex-col items-center py-2 px-4" style="color:var(--text3)">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <span class="text-[9px] uppercase tracking-wider">連絡先</span>
+            </button>
+            <button type="button" data-nav="settings" class="flex flex-col items-center py-2 px-4" style="color:var(--text3)">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="text-[9px] uppercase tracking-wider">設定</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════ 連絡先 ══════════════════ -->
+<div id="screen-contact" class="screen">
+    <div class="flex-1 flex flex-col">
+        <div class="px-6 pt-4 pb-5">
+            <h1 class="text-2xl font-bold mb-1" style="font-family:'Zen Maru Gothic',sans-serif">緊急連絡先</h1>
+            <p class="text-sm" style="color:var(--text2)">登録できる相手は1人のみです</p>
+        </div>
+        <div class="px-6">
+
+            <!-- Google ログイン案内（未ログイン時のみ） -->
+            <div id="googlePrompt" class="card p-5 mb-4">
+                <p class="text-sm font-semibold mb-1">Googleアカウントで同期</p>
+                <p class="text-xs leading-relaxed mb-4" style="color:var(--text2)">機種変更や再インストール後も連絡先設定を引き継ぐため、Googleアカウントへの連携をおすすめします。</p>
+                <button type="button" id="btnGoogleLogin" class="google-btn">
+                    <svg width="20" height="20" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    </svg>
+                    Googleでログイン（推奨）
+                </button>
+                <button type="button" id="btnSkipGoogle" class="w-full text-xs mt-3 py-2" style="color:var(--text3)">
+                    スキップして続ける
+                </button>
+            </div>
+
+            <!-- 未設定 -->
+            <div id="contactEmpty" style="display:none">
+                <div class="card p-6 mb-4 text-center">
+                    <div class="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:var(--peach-dim);border:2px dashed rgba(232,165,124,.4)">
+                        <svg class="w-7 h-7" style="color:var(--peach)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                    </div>
+                    <p class="text-base font-semibold mb-1">連絡先 未設定</p>
+                    <p class="text-xs leading-relaxed mb-5" style="color:var(--text2)">今のままでも使えますが、<br>緊急時に通知できる相手がいません。</p>
+                    <button type="button" id="btnAddContact" class="w-full font-bold py-3 rounded-xl text-sm" style="background:var(--teal);color:#fff">今すぐ設定する</button>
+                </div>
+            </div>
+
+            <!-- 設定済み -->
+            <div id="contactFilled" style="display:none">
+                <div class="card p-5 mb-4">
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold" style="background:linear-gradient(135deg,var(--teal),#5a8a96);color:#fff">
+                            <span id="cInitial">?</span>
+                        </div>
+                        <div>
+                            <p id="cName" class="text-lg font-semibold">—</p>
+                            <p id="cRel" class="text-xs" style="color:var(--text2)">—</p>
+                        </div>
+                    </div>
+                    <div class="pt-4" style="border-top:1px solid var(--border)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] uppercase tracking-wider" style="color:var(--text3)">メール</span>
+                            <span id="cEmail" class="text-sm">—</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- 確認メール送信済みバッジ -->
+                <div id="confirmBadge" class="mb-3 px-4 py-3 rounded-xl flex items-center gap-2 text-xs" style="background:rgba(123,168,181,.1);border:1px solid rgba(123,168,181,.25)">
+                    <svg class="w-4 h-4" style="color:var(--teal)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span style="color:var(--teal)">確認メールを送信しました</span>
+                </div>
+                <button type="button" id="btnEditContact" class="w-full card p-4 flex items-center justify-between mb-3">
+                    <span class="text-sm font-medium">情報を変更する</span>
+                    <svg class="w-4 h-4" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" id="btnSendTest" class="w-full card p-4 flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5" style="color:var(--teal)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span class="text-sm font-medium">テストメールを送信</span>
+                    </div>
+                    <svg class="w-4 h-4" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" id="btnRemoveContact" class="w-full card p-4 flex items-center justify-between mb-3">
+                    <span class="text-sm font-medium" style="color:var(--plum)">連絡先を削除する</span>
+                    <svg class="w-4 h-4" style="color:rgba(142,89,115,.5)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+                <div class="card p-4 mt-2">
+                    <p class="text-[11px] uppercase tracking-wider mb-3" style="color:var(--text3)">送信メッセージのプレビュー</p>
+                    <p class="text-xs leading-relaxed" style="color:var(--text2)">「<span id="previewName">○○</span>さんの様子を確認してください。3日以上ご連絡がありません。」</p>
+                </div>
+            </div>
+        </div>
+        <div class="bottom-nav-spacer"></div>
+    </div>
+    <div class="bottom-nav"><div class="flex justify-around items-center pt-2">
+        <button type="button" data-nav="home"     class="flex flex-col items-center py-2 px-4" style="color:var(--text3)"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span class="text-[9px] uppercase tracking-wider">元気</span></button>
+        <button type="button" data-nav="contact"  class="flex flex-col items-center py-2 px-4" style="color:var(--teal)"><svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="text-[9px] uppercase tracking-wider">連絡先</span></button>
+        <button type="button" data-nav="settings" class="flex flex-col items-center py-2 px-4" style="color:var(--text3)"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="text-[9px] uppercase tracking-wider">設定</span></button>
+    </div></div>
+</div>
+
+<!-- ══════════════════ 設定 ══════════════════ -->
+<div id="screen-settings" class="screen">
+    <div class="flex-1 flex flex-col">
+        <div class="px-6 pt-4 pb-5">
+            <h1 class="text-2xl font-bold" style="font-family:'Zen Maru Gothic',sans-serif">設定</h1>
+        </div>
+        <div class="px-6 space-y-3">
+
+            <!-- 機能停止 -->
+            <div class="card overflow-hidden">
+                <p class="text-[10px] uppercase tracking-wider px-4 pt-3 pb-2" style="color:var(--text3)">モード</p>
+                <div class="px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <div>
+                        <p class="text-sm font-medium">機能停止モード</p>
+                        <p class="text-xs" style="color:var(--text3)">旅行・入院中などに。通知・メール送信をすべて停止</p>
+                    </div>
+                    <div id="pauseToggle" class="toggle" data-pause></div>
+                </div>
+            </div>
+
+            <!-- 通知 -->
+            <div class="card overflow-hidden">
+                <p class="text-[10px] uppercase tracking-wider px-4 pt-3 pb-2" style="color:var(--text3)">通知</p>
+                <div class="px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <div><p class="text-sm">毎日のリマインダー</p><p class="text-xs" style="color:var(--text3)">夜21時にプッシュ通知</p></div>
+                    <div class="toggle on" data-toggle></div>
+                </div>
+                <div class="px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <div><p class="text-sm">通知音</p></div>
+                    <div class="toggle on" data-toggle></div>
+                </div>
+            </div>
+
+            <!-- サポート -->
+            <div class="card overflow-hidden">
+                <p class="text-[10px] uppercase tracking-wider px-4 pt-3 pb-2" style="color:var(--text3)">サポート</p>
+                <button type="button" id="btnOpenFeedback" class="w-full px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5" style="color:var(--teal)" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span class="text-sm">フィードバックを送る</span>
+                    </div>
+                    <svg class="w-4 h-4" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" class="w-full px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <span class="text-sm">プライバシーポリシー</span>
+                    <svg class="w-4 h-4" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" class="w-full px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <span class="text-sm">利用規約</span>
+                    <svg class="w-4 h-4" style="color:var(--text3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <div class="px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border)">
+                    <span class="text-sm" style="color:var(--text3)">バージョン</span>
+                    <span class="text-sm" style="color:var(--text3)">1.0.0</span>
+                </div>
+            </div>
+
+            <button type="button" id="btnReset" class="w-full mt-2 text-sm py-3" style="color:var(--plum)">
+                すべてのデータをリセット
+            </button>
+        </div>
+        <div class="bottom-nav-spacer"></div>
+    </div>
+    <div class="bottom-nav"><div class="flex justify-around items-center pt-2">
+        <button type="button" data-nav="home"     class="flex flex-col items-center py-2 px-4" style="color:var(--text3)"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span class="text-[9px] uppercase tracking-wider">元気</span></button>
+        <button type="button" data-nav="contact"  class="flex flex-col items-center py-2 px-4" style="color:var(--text3)"><svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span class="text-[9px] uppercase tracking-wider">連絡先</span></button>
+        <button type="button" data-nav="settings" class="flex flex-col items-center py-2 px-4" style="color:var(--teal)"><svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg><span class="text-[9px] uppercase tracking-wider">設定</span></button>
+    </div></div>
+</div>
+
+<!-- 連絡先編集シート -->
+<div id="editSheet" class="fixed inset-0 z-40" style="display:none">
+    <div class="absolute inset-0 backdrop" id="editBackdrop"></div>
+    <div class="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6 sheet" style="background:var(--bg2);border-top:1px solid var(--border);padding-bottom:max(env(safe-area-inset-bottom),24px)">
+        <div class="w-12 h-1 rounded-full mx-auto mb-5" style="background:var(--border2)"></div>
+        <h3 class="text-xl font-bold mb-1" style="font-family:'Zen Maru Gothic',sans-serif">連絡先を編集</h3>
+        <p class="text-xs mb-5" style="color:var(--text2)">保存すると相手に確認メールが自動送信されます</p>
+        <div class="space-y-4 mb-6">
+            <div><label class="block text-[11px] uppercase tracking-wider mb-2" style="color:var(--text3)">お名前</label><input id="editName" type="text" placeholder="田中 花子"></div>
+            <div><label class="block text-[11px] uppercase tracking-wider mb-2" style="color:var(--text3)">メール</label><input id="editEmail" type="email" placeholder="hanako@example.com"></div>
+            <div><label class="block text-[11px] uppercase tracking-wider mb-2" style="color:var(--text3)">続柄（任意）</label><input id="editRel" type="text" placeholder="例: 母 / 友人"></div>
+        </div>
+        <button type="button" id="btnSaveContact" class="w-full font-bold py-4 rounded-2xl mb-3" style="background:var(--teal);color:#fff">保存して確認メールを送信</button>
+        <button type="button" id="btnCloseEdit" class="w-full py-3 text-sm" style="color:var(--text3)">キャンセル</button>
+    </div>
+</div>
+
+<!-- フィードバックシート -->
+<div id="feedbackSheet" class="fixed inset-0 z-40" style="display:none">
+    <div class="absolute inset-0 backdrop" id="fbBackdrop"></div>
+    <div class="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6 sheet" style="background:var(--bg2);border-top:1px solid var(--border);padding-bottom:max(env(safe-area-inset-bottom),24px);max-height:90vh;overflow-y:auto">
+        <div class="w-12 h-1 rounded-full mx-auto mb-5" style="background:var(--border2)"></div>
+        <h3 class="text-xl font-bold mb-1" style="font-family:'Zen Maru Gothic',sans-serif">フィードバック</h3>
+        <p class="text-sm mb-6" style="color:var(--text2)">ご意見・不具合をお知らせください</p>
+        <div class="mb-6">
+            <p class="text-[11px] uppercase tracking-wider mb-4" style="color:var(--text3)">評価</p>
+            <div id="starRow" class="flex justify-center gap-3">
+                <span class="star" data-star="1">☆</span><span class="star" data-star="2">☆</span>
+                <span class="star" data-star="3">☆</span><span class="star" data-star="4">☆</span><span class="star" data-star="5">☆</span>
+            </div>
+            <p id="starLabel" class="text-center text-xs mt-3" style="color:var(--text3)">タップして評価</p>
+        </div>
+        <div class="mb-6">
+            <p class="text-[11px] uppercase tracking-wider mb-3" style="color:var(--text3)">カテゴリ</p>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" class="cat-btn px-3 py-1.5 rounded-full text-xs" style="border:1px solid var(--border2);color:var(--text2)" data-cat="改善要望">💡 改善要望</button>
+                <button type="button" class="cat-btn px-3 py-1.5 rounded-full text-xs" style="border:1px solid var(--border2);color:var(--text2)" data-cat="不具合">🐛 不具合</button>
+                <button type="button" class="cat-btn px-3 py-1.5 rounded-full text-xs" style="border:1px solid var(--border2);color:var(--text2)" data-cat="デザイン">🎨 デザイン</button>
+                <button type="button" class="cat-btn px-3 py-1.5 rounded-full text-xs" style="border:1px solid var(--border2);color:var(--text2)" data-cat="その他">💬 その他</button>
+            </div>
+        </div>
+        <div class="mb-6">
+            <p class="text-[11px] uppercase tracking-wider mb-3" style="color:var(--text3)">詳細（任意）</p>
+            <textarea id="fbText" rows="3" placeholder="ご意見や不具合の内容をご記入ください"></textarea>
+        </div>
+        <button type="button" id="btnSubmitFb" class="w-full font-bold py-4 rounded-2xl mb-3" style="background:var(--teal);color:#fff">送信する</button>
+        <div id="fbSuccess" style="display:none" class="text-center py-4">
+            <div class="text-3xl mb-2">🙏</div>
+            <p class="font-semibold mb-1">ありがとうございます！</p>
+            <p class="text-xs" style="color:var(--text2)">フィードバックを受け付けました。</p>
+        </div>
+        <button type="button" id="btnCloseFb" class="w-full py-3 text-sm" style="color:var(--text3)">閉じる</button>
+    </div>
+</div>
+
+<!-- 緊急アラートモーダル -->
+<div id="alertModal" class="fixed inset-0 z-50" style="display:none">
+    <div class="absolute inset-0 backdrop"></div>
+    <div class="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6 sheet" style="background:var(--bg2);border-top:3px solid var(--plum);padding-bottom:max(env(safe-area-inset-bottom),24px)">
+        <div class="w-12 h-1 rounded-full mx-auto mb-6" style="background:var(--border2)"></div>
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:var(--plum-dim);border:2px solid rgba(142,89,115,.35)">
+                <svg class="w-8 h-8" style="color:var(--plum)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold mb-2" style="color:var(--plum);font-family:'Zen Maru Gothic',sans-serif">確認メールを送信しました</h3>
+            <p class="text-sm leading-relaxed" style="color:var(--text2)">
+                3日連続で未確認のため、<br>
+                <span id="alertContactName" class="font-semibold" style="color:var(--text)">緊急連絡先</span> 様へ<br>
+                「○○さんの様子をご確認ください」を送信しました。
+            </p>
+        </div>
+        <button type="button" id="btnAlertOk" class="w-full font-bold py-4 rounded-2xl" style="background:var(--teal);color:#fff;font-family:'Zen Maru Gothic',sans-serif">
+            わかりました（今すぐ確認する）
+        </button>
+    </div>
+</div>
+
+<!-- iOS風プッシュ通知 -->
+<div id="pushNotif" class="push-notification" onclick="dismissPush()">
+    <div class="flex items-start gap-3">
+        <div class="push-icon">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-baseline justify-between mb-0.5">
+                <span class="text-[13px] font-semibold" style="color:var(--text)">今日も元気</span>
+                <span class="text-[11px]" style="color:var(--text3)">今</span>
+            </div>
+            <p class="text-[14px] font-semibold leading-tight" style="color:var(--text)">昨日から確認がありません</p>
+            <p class="text-[13px] leading-snug mt-0.5" style="color:var(--text2)">明日までに確認しないと、緊急連絡先へメールが送信されます。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 px-5 py-3 rounded-full text-sm font-semibold opacity-0 pointer-events-none transition-opacity duration-300 z-50 shadow-xl" style="white-space:nowrap;background:var(--teal);color:#fff">Toast</div>
+
+<script>
+'use strict';
+
+// ─── State ───────────────────────────────────
+const S = {
+    contact:        { name:'', email:'', relationship:'' },
+    checkIns:       {},
+    lastCheckInTime: null,
+    virtualToday:   null,
+    notified:       false,
+    pushSent:       false,
+    paused:         false,
+    googleLinked:   false,
+    googleSkipped:  false,
+    fbRating:       0,
+    fbCategory:     '',
+};
+
+// ─── Date helpers ────────────────────────────
+const dk  = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const td  = ()  => new Date(S.virtualToday);
+const add = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+const ds  = d   => ['日','月','火','水','木','金','土'][d.getDay()];
+
+// ─── Status ──────────────────────────────────
+// safe    = 今日 OK
+// pending = 今日まだ、昨日 OK
+// warn    = 昨日 NG、一昨日 OK → プッシュ通知タイミング
+// alert   = 昨日+一昨日 NG    → メール送信タイミング
+function getStatus() {
+    if (S.paused) return 'paused';
+    const t=td(), c=k=>!!S.checkIns[k];
+    if (c(dk(t)))           return 'safe';
+    if (c(dk(add(t,-1))))   return 'pending';
+    if (c(dk(add(t,-2))))   return 'warn';
+    return 'alert';
+}
+
+// ─── Haptic ──────────────────────────────────
+function vib(type) {
+    if (!navigator.vibrate) return;
+    const p={heavy:[0,80],success:[0,40,30,40],warn:[0,20,15,20],error:[0,100,50,100]};
+    navigator.vibrate(p[type]||[0,50]);
+}
+
+// ─── Navigation ──────────────────────────────
+function go(name) {
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    const t=document.getElementById('screen-'+name);
+    if (t) { t.classList.add('active'); window.scrollTo(0,0); }
+    if (name==='contact') renderContact();
+    if (name==='home')    updateHome();
+}
+
+// ─── Check-in ────────────────────────────────
+function checkIn() {
+    if (S.paused) { vib('warn'); showToast('機能停止中です。設定から再開できます'); return; }
+    const st=getStatus();
+    if (st==='safe') { vib('warn'); showToast('本日は確認済みです ✓'); return; }
+
+    S.checkIns[dk(td())]=true;
+    S.lastCheckInTime=td().getTime();
+    S.notified=false; S.pushSent=false;
+    vib('heavy');
+
+    // リップル
+    const ripple=document.getElementById('ripple');
+    ripple.style.opacity='1'; setTimeout(()=>ripple.style.opacity='0',380);
+
+    // アイコン変更
+    const icon=document.getElementById('checkInIcon');
+    const lbl =document.getElementById('checkInLabel');
+    icon.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>';
+    icon.classList.add('pop-in'); icon.style.color='var(--teal)';
+    lbl.textContent='確認しました！'; lbl.style.color='var(--teal)';
+
+    showToast('今日も元気！確認しました 🌿');
+    updateHome();
+    setTimeout(()=>{ icon.classList.remove('pop-in'); updateHome(); }, 2600);
+}
+
+// ─── Skip day (demo) ─────────────────────────
+function skipDay() {
+    S.virtualToday=add(td(),1);
+    vib('warn');
+    const st=getStatus();
+
+    if (st==='warn' && !S.pushSent) {
+        S.pushSent=true;
+        showPush(); vib('warn');
+    }
+    if (st==='alert' && !S.notified) {
+        S.notified=true;
+        if (hasContact()) {
+            document.getElementById('alertContactName').textContent=S.contact.name;
+            document.getElementById('alertModal').style.display='block';
+            vib('error');
+        } else {
+            showToast('連絡先が未設定です。設定をおすすめします');
+        }
+    }
+    if (st==='safe') { S.pushSent=false; S.notified=false; }
+    updateHome();
+    showToast(td().getDate()+'日('+ds(td())+') に進みました');
+}
+
+// ─── Home update ─────────────────────────────
+function updateHome() {
+    const st  =getStatus();
+    const dot =document.getElementById('statusDot');
+    const slbl=document.getElementById('statusLabel');
+    const big =document.getElementById('statusBig');
+    const sub =document.getElementById('statusSub');
+    const btn =document.getElementById('btnCheckIn');
+    const icon=document.getElementById('checkInIcon');
+    const lbl =document.getElementById('checkInLabel');
+    const glow=document.getElementById('glowRing');
+    const pb  =document.getElementById('pauseBanner');
+
+    pb.style.display = S.paused ? 'flex' : 'none';
+
+    btn.classList.remove('ring-safe','ring-warn','ring-alert');
+    btn.style.borderColor=''; btn.style.background='';
+    icon.style.color=''; lbl.style.color='';
+
+    big.classList.remove('s-anim'); void big.offsetWidth; big.classList.add('s-anim');
+    sub.classList.remove('s-anim'); void sub.offsetWidth; sub.classList.add('s-anim');
+
+    if (st!=='safe') {
+        icon.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>';
+    }
+
+    if (st==='paused') {
+        document.body.className='bg-pending';
+        dot.style.background='var(--peach)'; slbl.textContent='停止中';
+        big.textContent='機能停止中'; big.style.color='var(--peach)';
+        sub.textContent='通知・メール送信が停止されています'; sub.style.color='var(--text2)';
+        btn.style.borderColor='var(--border2)'; icon.style.color='var(--text3)';
+        lbl.textContent='機能停止中'; lbl.style.color='var(--text3)';
+        glow.style.background='none';
+
+    } else if (st==='safe') {
+        document.body.className='bg-safe';
+        dot.style.background='var(--teal)'; slbl.textContent='見守り中';
+        big.textContent='今日も元気 ✓'; big.style.color='var(--teal)';
+        sub.textContent='また明日も確認してください'; sub.style.color='var(--text2)';
+        btn.classList.add('ring-safe');
+        btn.style.borderColor='var(--teal)'; btn.style.background='var(--teal-dim)';
+        icon.style.color='var(--teal)';
+        icon.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>';
+        lbl.textContent='確認済み'; lbl.style.color='var(--teal)';
+        glow.style.background='radial-gradient(circle,rgba(123,168,181,.22) 0%,transparent 70%)';
+
+    } else if (st==='pending') {
+        document.body.className='bg-pending';
+        dot.style.background='var(--peach)'; slbl.textContent='未確認';
+        big.textContent='本日 未確認'; big.style.color='var(--peach)';
+        sub.textContent='今日中にタップしてください'; sub.style.color='var(--text2)';
+        btn.classList.add('ring-warn');
+        btn.style.borderColor='var(--border2)'; icon.style.color='var(--text3)';
+        lbl.textContent='今日も元気！'; lbl.style.color='var(--text3)';
+        glow.style.background='radial-gradient(circle,rgba(232,165,124,.14) 0%,transparent 70%)';
+
+    } else if (st==='warn') {
+        document.body.className='bg-pending';
+        dot.style.background='var(--peach)'; slbl.textContent='警告';
+        big.textContent='昨日 未確認 ⚠'; big.style.color='var(--peach)';
+        sub.textContent='今日中に確認しないと連絡先へメールが届きます'; sub.style.color='var(--text2)';
+        btn.classList.add('ring-warn');
+        btn.style.borderColor='var(--peach)'; btn.style.background='var(--peach-dim)';
+        icon.style.color='var(--peach)';
+        lbl.textContent='今すぐ確認！'; lbl.style.color='var(--peach)';
+        glow.style.background='radial-gradient(circle,rgba(232,165,124,.2) 0%,transparent 70%)';
+
+    } else {
+        document.body.className='bg-alert';
+        dot.style.background='var(--plum)'; slbl.textContent='緊急';
+        big.textContent='連絡先へメール送信'; big.style.color='var(--plum)';
+        sub.textContent='3日間確認がありませんでした'; sub.style.color='var(--text2)';
+        btn.classList.add('ring-alert');
+        btn.style.borderColor='var(--plum)'; btn.style.background='var(--plum-dim)';
+        icon.style.color='var(--plum)';
+        icon.innerHTML='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+        lbl.textContent='今すぐ確認！'; lbl.style.color='var(--plum)';
+        glow.style.background='radial-gradient(circle,rgba(142,89,115,.22) 0%,transparent 70%)';
+    }
+
+    // 前回
+    const le=document.getElementById('lastCheckIn');
+    le.textContent = S.lastCheckInTime
+        ? (new Date(S.lastCheckInTime).getMonth()+1)+'月'+new Date(S.lastCheckInTime).getDate()+'日('+ds(new Date(S.lastCheckInTime))+')'
+        : 'まだ確認していません';
+
+    renderCal();
+}
+
+// ─── Calendar ────────────────────────────────
+function renderCal() {
+    const cal=document.getElementById('calendar'); if(!cal)return;
+    cal.innerHTML='';
+    const t=td();
+    for(let i=-6;i<=0;i++){
+        const d=add(t,i), key=dk(d), isToday=(i===0), chk=!!S.checkIns[key];
+        const wrap=document.createElement('div'); wrap.className='flex flex-col items-center gap-1';
+        const dot=document.createElement('div'); dot.className='day-dot';
+        if (chk)          { dot.classList.add(isToday?'today-checked':'checked'); dot.textContent='✓'; }
+        else if (isToday) { dot.classList.add('today-unchecked'); dot.textContent=d.getDate(); }
+        else              { dot.classList.add('missed'); dot.textContent='×'; }
+        const dl=document.createElement('span');
+        dl.style.cssText='font-size:9px;color:var(--text3)'; dl.textContent=ds(d);
+        wrap.append(dot,dl); cal.append(wrap);
+    }
+}
+
+// ─── Contact ─────────────────────────────────
+const hasContact=()=>!!(S.contact.name && S.contact.email);
+
+function renderContact() {
+    const gp=document.getElementById('googlePrompt');
+    const empty=document.getElementById('contactEmpty');
+    const filled=document.getElementById('contactFilled');
+
+    // Google 案内: 未リンク・未スキップの場合のみ表示
+    gp.style.display    = (!S.googleLinked && !S.googleSkipped) ? 'block' : 'none';
+    empty.style.display  = (S.googleLinked||S.googleSkipped) && !hasContact() ? 'block' : 'none';
+    filled.style.display = hasContact() ? 'block' : 'none';
+
+    if (hasContact()) {
+        const c=S.contact;
+        document.getElementById('cInitial').textContent=c.name?c.name.charAt(0):'?';
+        document.getElementById('cName').textContent=c.name||'—';
+        document.getElementById('cRel').textContent=c.relationship||'—';
+        document.getElementById('cEmail').textContent=c.email||'—';
+        document.getElementById('previewName').textContent=c.name||'○○';
+    }
+}
+
+function openEdit() {
+    document.getElementById('editName').value=S.contact.name;
+    document.getElementById('editEmail').value=S.contact.email;
+    document.getElementById('editRel').value=S.contact.relationship;
+    document.getElementById('editSheet').style.display='block';
+}
+function closeEdit() { document.getElementById('editSheet').style.display='none'; }
+
+function saveContact() {
+    const name=document.getElementById('editName').value.trim();
+    const email=document.getElementById('editEmail').value.trim();
+    const rel=document.getElementById('editRel').value.trim();
+    if(!name||!email){ showToast('名前とメールを入力してください'); return; }
+    S.contact={name,email,relationship:rel};
+    renderContact(); closeEdit(); vib('success');
+    // 確認メール送信済みバッジを表示
+    document.getElementById('confirmBadge').style.display='flex';
+    showToast('保存しました。確認メールを送信しました 📨');
+}
+
+function removeContact() {
+    if(!confirm('連絡先を削除しますか？')) return;
+    S.contact={name:'',email:'',relationship:''};
+    renderContact(); vib('warn');
+    showToast('連絡先を削除しました');
+}
+
+// ─── Pause (機能停止) ────────────────────────
+function togglePause() {
+    S.paused=!S.paused;
+    const t=document.getElementById('pauseToggle');
+    t.classList.toggle('on', S.paused);
+    vib('success');
+    updateHome();
+    showToast(S.paused ? '機能を停止しました' : '機能を再開しました 🌿');
+}
+
+// ─── Google (demo) ───────────────────────────
+function googleLogin() {
+    vib('success');
+    showToast('Googleアカウントと連携しました（デモ）');
+    S.googleLinked=true;
+    renderContact();
+}
+function skipGoogle() {
+    S.googleSkipped=true;
+    renderContact();
+}
+
+// ─── App start ───────────────────────────────
+function startApp() {
+    S.virtualToday=new Date();
+    vib('success'); go('home');
+}
+
+// ─── Reset ───────────────────────────────────
+function resetApp() {
+    if(!confirm('すべてリセットしますか？')) return;
+    Object.assign(S,{contact:{name:'',email:'',relationship:''},checkIns:{},lastCheckInTime:null,
+        virtualToday:null,notified:false,pushSent:false,paused:false,googleLinked:false,googleSkipped:false,fbRating:0,fbCategory:''});
+    document.getElementById('alertModal').style.display='none';
+    document.getElementById('pushNotif').classList.remove('show');
+    document.getElementById('pauseToggle').classList.remove('on');
+    resetFbUI(); go('onboarding');
+}
+
+// ─── Push notification ───────────────────────
+let pushTimer;
+function showPush() {
+    const el=document.getElementById('pushNotif');
+    el.classList.add('show');
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(()=>el.classList.remove('show'),5000);
+}
+function dismissPush() {
+    document.getElementById('pushNotif').classList.remove('show');
+    clearTimeout(pushTimer); vib('success');
+}
+
+// ─── Feedback ────────────────────────────────
+const starLbls=['','がっかり','もう少し','まあまあ','良い！','最高！！'];
+function setRating(n) {
+    S.fbRating=n;
+    document.querySelectorAll('.star').forEach((s,i)=>{
+        s.textContent=i<n?'★':'☆';
+        s.style.color=i<n?'var(--peach)':'var(--text3)';
+    });
+    document.getElementById('starLabel').textContent=starLbls[n];
+    vib('success');
+}
+function resetFbUI() {
+    document.querySelectorAll('.star').forEach(s=>{s.textContent='☆';s.style.color='var(--text3)';});
+    document.getElementById('starLabel').textContent='タップして評価';
+    document.querySelectorAll('.cat-btn').forEach(b=>{b.style.background='';b.style.color='var(--text2)';b.style.borderColor='var(--border2)';});
+    document.getElementById('fbText').value='';
+    document.getElementById('fbSuccess').style.display='none';
+    document.getElementById('btnSubmitFb').style.display='block';
+    S.fbRating=0; S.fbCategory='';
+}
+function openFb()  { resetFbUI(); document.getElementById('feedbackSheet').style.display='block'; }
+function closeFb() { document.getElementById('feedbackSheet').style.display='none'; }
+function submitFb() {
+    if(!S.fbRating){ showToast('評価を選んでください'); return; }
+    vib('success');
+    document.getElementById('fbSuccess').style.display='block';
+    document.getElementById('btnSubmitFb').style.display='none';
+    showToast('フィードバックを送信しました 🙏');
+}
+
+// ─── Toast ───────────────────────────────────
+let toastT;
+function showToast(msg) {
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.style.opacity='1';
+    clearTimeout(toastT);
+    toastT=setTimeout(()=>el.style.opacity='0',2500);
+}
+
+// ─── Event binding ───────────────────────────
+function bindAll() {
+    // ナビ
+    document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>go(b.getAttribute('data-nav'))));
+    // 引導
+    document.getElementById('btnStartOnboarding').addEventListener('click',startApp);
+    // メイン
+    document.getElementById('btnCheckIn').addEventListener('click',checkIn);
+    document.getElementById('btnSkipDay').addEventListener('click',skipDay);
+    document.getElementById('btnTopReset').addEventListener('click',resetApp);
+    document.getElementById('btnResume').addEventListener('click',togglePause);
+    // 連絡先
+    document.getElementById('btnGoogleLogin').addEventListener('click',googleLogin);
+    document.getElementById('btnSkipGoogle').addEventListener('click',skipGoogle);
+    document.getElementById('btnAddContact').addEventListener('click',openEdit);
+    document.getElementById('btnEditContact').addEventListener('click',openEdit);
+    document.getElementById('btnRemoveContact').addEventListener('click',removeContact);
+    document.getElementById('btnSendTest').addEventListener('click',()=>{ vib('success'); showToast('テストメールを送信しました 📨'); });
+    document.getElementById('btnSaveContact').addEventListener('click',saveContact);
+    document.getElementById('btnCloseEdit').addEventListener('click',closeEdit);
+    document.getElementById('editBackdrop').addEventListener('click',closeEdit);
+    // 設定
+    document.getElementById('pauseToggle').addEventListener('click',togglePause);
+    document.getElementById('btnReset').addEventListener('click',resetApp);
+    document.getElementById('btnOpenFeedback').addEventListener('click',openFb);
+    document.querySelectorAll('[data-toggle]').forEach(t=>t.addEventListener('click',()=>{t.classList.toggle('on');vib('success');}));
+    // アラート
+    document.getElementById('btnAlertOk').addEventListener('click',()=>{ document.getElementById('alertModal').style.display='none'; checkIn(); });
+    // フィードバック
+    document.getElementById('btnCloseFb').addEventListener('click',closeFb);
+    document.getElementById('fbBackdrop').addEventListener('click',closeFb);
+    document.getElementById('btnSubmitFb').addEventListener('click',submitFb);
+    document.querySelectorAll('.star').forEach(s=>s.addEventListener('click',()=>setRating(+s.getAttribute('data-star'))));
+    document.querySelectorAll('.cat-btn').forEach(b=>b.addEventListener('click',()=>{
+        document.querySelectorAll('.cat-btn').forEach(x=>{x.style.background='';x.style.color='var(--text2)';x.style.borderColor='var(--border2)';});
+        b.style.background='var(--teal-dim)'; b.style.color='var(--teal)'; b.style.borderColor='var(--teal)';
+        S.fbCategory=b.getAttribute('data-cat'); vib('success');
+    }));
+}
+
+document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',bindAll)
+    : bindAll();
+
+window.dismissPush=dismissPush;
+window.resetApp=resetApp;
+</script>
+</body>
+</html>
