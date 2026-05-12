@@ -7,21 +7,47 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Get Flutter packages
+      - name: Flutter pub get
         script: flutter pub get
 
-      - name: Build iOS (no code signing)
-        script: |
-          # flutter build ios handles pod install internally
-          # || true: xcode build succeeds but flutter post-check fails on signing — ignore it
-          flutter build ios --release --no-codesign || true
+      - name: Pod install
+        script: cd ios && pod install
 
-          # Verify the .app was actually built
+      - name: Build Dart & iOS app via xcodebuild
+        script: |
+          # Step 1: Let Flutter compile Dart code and prepare the Xcode project
+          # We only need Flutter to set up generated files — xcodebuild does the rest
+          flutter build ios --release --no-codesign 2>&1 || true
+
+          # Step 2: If flutter produced Runner.app, we're done with step 1
+          # Otherwise use xcodebuild directly to build + archive
           if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
-            echo "ERROR: Runner.app not found — xcode build may have failed"
+            echo "Flutter output not found, using xcodebuild directly..."
+
+            xcodebuild \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -archivePath "$CM_BUILD_DIR/archive/Runner.xcarchive" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" \
+              archive
+
+            # Extract .app from archive
+            mkdir -p build/ios/iphoneos
+            cp -r "$CM_BUILD_DIR/archive/Runner.xcarchive/Products/Applications/Runner.app" \
+                  build/ios/iphoneos/Runner.app
+          fi
+
+          # Verify
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "ERROR: Build failed — Runner.app not found"
             exit 1
           fi
-          echo "Runner.app built successfully"
+          echo "SUCCESS: Runner.app is ready"
 
       - name: Package unsigned IPA
         script: |
@@ -30,7 +56,7 @@ workflows:
           mkdir -p Payload
           cp -r Runner.app Payload/
           zip -r ../unsigned/kyogen-unsigned.ipa Payload/
-          echo "IPA created: build/ios/unsigned/kyogen-unsigned.ipa"
+          echo "IPA packaged at build/ios/unsigned/kyogen-unsigned.ipa"
 
     artifacts:
       - build/ios/unsigned/kyogen-unsigned.ipa
