@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import '../models/models.dart';
-import '../services/contact_service.dart';
-import '../services/auth_service.dart';
-import '../theme/app_theme.dart';
-import '../widgets/common_widgets.dart';
+import 'package:kyogen/models.dart';
+import 'package:kyogen/services/contact_service.dart';
+import 'package:kyogen/services/auth_service.dart';
+import 'package:kyogen/theme/app_theme.dart';
+import 'package:kyogen/common_widgets.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -58,7 +58,7 @@ class _ContactScreenState extends State<ContactScreen> {
       final result = await _authService.linkGoogleAccount();
       if (result != null) {
         setState(() => _googleLinked = true);
-        _showSnack('Googleアカウントと連携しました �?);
+        _showSnack('Googleアカウントと連携しました �?);
       }
     } catch (e) {
       _showSnack('連携に失敗しました。もう一度お試しください');
@@ -105,12 +105,12 @@ class _ContactScreenState extends State<ContactScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('連絡先を削除',
             style: TextStyle(color: AppColors.text)),
-        content: const Text('削除すると緊急時にメールを送れなくなります�?,
+        content: const Text('削除すると緊急時にメールを送れなくなります�?,
             style: TextStyle(color: AppColors.text2)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセ�?,
+            child: const Text('キャンセ�?,
                 style: TextStyle(color: AppColors.text3)),
           ),
           TextButton(
@@ -158,10 +158,10 @@ class _ContactScreenState extends State<ContactScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('緊急連絡�?,
+                          Text('緊急連絡�?,
                               style: Theme.of(context).textTheme.titleLarge),
                           const SizedBox(height: 4),
-                          const Text('登録できる相手は1人のみで�?,
+                          const Text('登録できる相手は1人のみで�?,
                               style: TextStyle(
                                 fontSize: 14, color: AppColors.text2)),
                         ],
@@ -186,7 +186,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                   )),
                               const SizedBox(height: 4),
                               const Text(
-                                '機種変更や再インストール後も\n連絡先設定を引き継ぐことができます�?,
+                                '機種変更や再インストール後も\n連絡先設定を引き継ぐことができます�?,
                                 style: TextStyle(
                                   fontSize: 13, color: AppColors.text2,
                                   height: 1.5),
@@ -201,7 +201,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                 onTap: () =>
                                     setState(() => _googleSkipped = true),
                                 child: const Center(
-                                  child: Text('スキップして続け�?,
+                                  child: Text('スキップして続け�?,
                                       style: TextStyle(
                                         fontSize: 12, color: AppColors.text3)),
                                 ),
@@ -212,7 +212,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // ── Google 連携済みバッ�?──────────
+                      // ── Google 連携済みバッ�?──────────
                       if (_googleLinked) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -239,7 +239,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // ── 連絡�?未設�?────────────────
+                      // ── 連絡�?未設�?────────────────
                       if (_contact == null || !_contact!.isSet) ...[
                         AppCard(
                           child: Column(
@@ -258,14 +258,14 @@ class _ContactScreenState extends State<ContactScreen> {
                                     color: AppColors.peach, size: 26),
                               ),
                               const SizedBox(height: 14),
-                              const Text('連絡�?未設�?,
+                              const Text('連絡�?未設�?,
                                   style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.w700,
                                     color: AppColors.text,
                                   )),
                               const SizedBox(height: 6),
                               const Text(
-                                '今のままでも使えますが、\n緊急時に通知できる相手がいません�?,
+                                '今のままでも使えますが、\n緊急時に通知できる相手がいません�?,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13, color: AppColors.text2,
@@ -287,7 +287,7 @@ class _ContactScreenState extends State<ContactScreen> {
                                             BorderRadius.circular(14)),
                                     elevation: 0,
                                   ),
-                                  child: const Text('今すぐ設定す�?,
+                                  child: const Text('今すぐ設定す�?,
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700)),
                                 ),
@@ -297,7 +297,7 @@ class _ContactScreenState extends State<ContactScreen> {
                         ),
                       ],
 
-                      // ── 連絡�?設定済み ───────────────
+                      // ── 連絡�?設定済み ───────────────
                       if (_contact != null && _contact!.isSet) ...[
                         AppCard(
                           child: Column(
@@ -332,7 +332,7 @@ class _ContactScreenState extends State<ContactScreen> {
                               const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  const Text('メー�?,
+                                  const Text('メー�?,
                                       style: TextStyle(
                                         fontSize: 11, color: AppColors.text3,
                                         letterSpacing: 0.1,
@@ -379,15 +379,15 @@ class _ContactScreenState extends State<ContactScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('送信メッセージのプレビュ�?,
+                              const Text('送信メッセージのプレビュ�?,
                                   style: TextStyle(
                                     fontSize: 10, color: AppColors.text3,
                                     letterSpacing: 0.1,
                                   )),
                               const SizedBox(height: 8),
                               Text(
-                                '�?{_contact!.name}さんの様子をご確認ください�?
-                                '3日以上ご連絡がありません。�?,
+                                '�?{_contact!.name}さんの様子をご確認ください�?
+                                '3日以上ご連絡がありません。�?,
                                 style: const TextStyle(
                                   fontSize: 13, color: AppColors.text2,
                                   height: 1.5),
@@ -402,7 +402,7 @@ class _ContactScreenState extends State<ContactScreen> {
                           child: Column(
                             children: [
                               SettingsRow(
-                                title: '情報を変更す�?,
+                                title: '情報を変更す�?,
                                 trailing: const Icon(Icons.chevron_right,
                                     size: 18, color: AppColors.text3),
                                 onTap: _openEditSheet,
@@ -554,23 +554,23 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
                 style: TextStyle(fontSize: 12, color: AppColors.text2)),
             const SizedBox(height: 20),
 
-            const SectionLabel('お名�?),
+            const SectionLabel('お名�?),
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(hintText: '�? 田中 花子'),
+              decoration: const InputDecoration(hintText: '�? 田中 花子'),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'お名前を入力してください' : null,
             ),
             const SizedBox(height: 14),
 
-            const SectionLabel('メールアドレ�?),
+            const SectionLabel('メールアドレ�?),
             TextFormField(
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(hintText: 'hanako@example.com'),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'メールを入力してください';
-                if (!v.contains('@')) return '正しいメールアドレスを入力してくださ�?;
+                if (!v.contains('@')) return '正しいメールアドレスを入力してくださ�?;
                 return null;
               },
             ),
@@ -579,7 +579,7 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             const SectionLabel('続柄（任意）'),
             TextFormField(
               controller: _relCtrl,
-              decoration: const InputDecoration(hintText: '�? �?/ 友人 / �?),
+              decoration: const InputDecoration(hintText: '�? �?/ 友人 / �?),
             ),
             const SizedBox(height: 24),
 
@@ -612,7 +612,7 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('キャンセ�?,
+                child: const Text('キャンセ�?,
                     style: TextStyle(color: AppColors.text3, fontSize: 14)),
               ),
             ),

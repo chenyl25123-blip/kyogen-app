@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/models.dart';
+import 'package:kyogen/models.dart';
 
 class CheckInService {
   final _db   = FirebaseFirestore.instance;
@@ -41,7 +41,7 @@ class CheckInService {
     return CheckInStatus.alert;
   }
 
-  // N 回個別 read �?コレクションクエ�?1 回に最適化
+  // N 回個別 read �?コレクションクエ�?1 回に最適化
   Future<Map<String, bool>> getHistory(int days) async {
     final jst       = DateTime.now().toUtc().add(const Duration(hours: 9));
     final oldestKey = _dateKey(days - 1);
@@ -69,7 +69,7 @@ class CheckInService {
     await _db.collection('users').doc(_uid).update({'paused': paused});
   }
 
-  // リセット: 連絡先・チェックイン履歴・ユーザーフィールドを削�?  Future<void> resetAllData() async {
+  // リセット: 連絡先・チェックイン履歴・ユーザーフィールドを削�?  Future<void> resetAllData() async {
     final db  = _db;
     final uid = _uid;
 

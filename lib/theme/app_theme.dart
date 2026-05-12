@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
@@ -9,10 +9,10 @@ class AppColors {
   static const border   = Color(0xFFE2DDED);
   static const border2  = Color(0xFFCFC8E0);
 
-  static const teal     = Color(0xFF7BA8B5); // 確認済み・安�?  static const tealDim  = Color(0x217BA8B5);
+  static const teal     = Color(0xFF7BA8B5); // 確認済み・安�?  static const tealDim  = Color(0x217BA8B5);
   static const peach    = Color(0xFFE8A57C); // 警告
   static const peachDim = Color(0x21E8A57C);
-  static const plum     = Color(0xFF8E5973); // 緊�?  static const plumDim  = Color(0x218E5973);
+  static const plum     = Color(0xFF8E5973); // 緊�?  static const plumDim  = Color(0x218E5973);
 
   static const text     = Color(0xFF3A3645);
   static const text2    = Color(0xFF7A7390);
