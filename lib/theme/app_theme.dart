@@ -1,5 +1,4 @@
-﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/material.dart';
 
 class AppColors {
   // ── 柔軟パステル ───────────────────────────────
@@ -9,10 +8,12 @@ class AppColors {
   static const border   = Color(0xFFE2DDED);
   static const border2  = Color(0xFFCFC8E0);
 
-  static const teal     = Color(0xFF7BA8B5); // 確認済み・安�?  static const tealDim  = Color(0x217BA8B5);
+  static const teal     = Color(0xFF7BA8B5); // 確認済み・安全
+  static const tealDim  = Color(0x217BA8B5);
   static const peach    = Color(0xFFE8A57C); // 警告
   static const peachDim = Color(0x21E8A57C);
-  static const plum     = Color(0xFF8E5973); // 緊�?  static const plumDim  = Color(0x218E5973);
+  static const plum     = Color(0xFF8E5973); // 緊急
+  static const plumDim  = Color(0x218E5973);
 
   static const text     = Color(0xFF3A3645);
   static const text2    = Color(0xFF7A7390);
@@ -32,24 +33,15 @@ class AppTheme {
         onPrimary: Colors.white,
         onSurface: AppColors.text,
       ),
-      textTheme: GoogleFonts.dmSansTextTheme().copyWith(
-        displayLarge: GoogleFonts.zenMaruGothic(
-          fontSize: 32, fontWeight: FontWeight.w700,
-          color: AppColors.text,
-        ),
-        titleLarge: GoogleFonts.zenMaruGothic(
-          fontSize: 22, fontWeight: FontWeight.w700,
-          color: AppColors.text,
-        ),
-        bodyLarge:  GoogleFonts.dmSans(fontSize: 16, color: AppColors.text),
-        bodyMedium: GoogleFonts.dmSans(fontSize: 14, color: AppColors.text2),
-        bodySmall:  GoogleFonts.dmSans(fontSize: 12, color: AppColors.text3),
-        labelSmall: GoogleFonts.dmSans(
-          fontSize: 10, color: AppColors.text3,
-          letterSpacing: 0.15,
-        ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.text),
+        titleLarge:   TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.text),
+        bodyLarge:    TextStyle(fontSize: 16, color: AppColors.text),
+        bodyMedium:   TextStyle(fontSize: 14, color: AppColors.text2),
+        bodySmall:    TextStyle(fontSize: 12, color: AppColors.text3),
+        labelSmall:   TextStyle(fontSize: 10, color: AppColors.text3, letterSpacing: 0.15),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.bg2,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -80,13 +72,13 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: AppColors.text),
-        titleTextStyle: GoogleFonts.zenMaruGothic(
+        titleTextStyle: const TextStyle(
           fontSize: 18, fontWeight: FontWeight.w700,
           color: AppColors.text,
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.bg.withOpacity(0.96),
+        backgroundColor: AppColors.bg.withValues(alpha: 0.96),
         selectedItemColor: AppColors.teal,
         unselectedItemColor: AppColors.text3,
         type: BottomNavigationBarType.fixed,

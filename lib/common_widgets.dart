@@ -1,7 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:kyogen/theme/app_theme.dart';
 
-// ── 角丸カー�?─────────────────────────────────────────
+// ── 角丸カード ─────────────────────────────────────────
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -108,7 +108,7 @@ class SettingsRow extends StatelessWidget {
   }
 }
 
-// ── カスタムトグルスイッ�?────────────────────────────
+// ── カスタムトグルスイッチ ────────────────────────────
 class AppToggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -213,7 +213,7 @@ class GoogleSignInButton extends StatelessWidget {
           border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8, offset: const Offset(0, 2),
             ),
           ],
@@ -230,11 +230,11 @@ class GoogleSignInButton extends StatelessWidget {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Google ロゴ (SVG相当をCustomPainterで描�?
+                // Google ロゴ (SVG相当をCustomPainterで描画)
                 _GoogleLogo(),
                 const SizedBox(width: 10),
                 const Text(
-                  'Googleでログイン（推奨�?,
+                  'Googleでログイン（推奨）',
                   style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w600,
                     color: AppColors.text,
@@ -266,22 +266,22 @@ class _GoogleLogoPainter extends CustomPainter {
     final center = rect.center;
     final r = size.width / 2;
 
-    // 簡易Googleロゴ (4色の�?
+    // 簡易Googleロゴ (4色の弧)
     final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 3;
 
-    // �?(上右)
+    // 赤 (上右)
     paint.color = const Color(0xFFEA4335);
     canvas.drawArc(rect, -1.2, 1.6, false, paint);
 
-    // �?(右下)
+    // 黄 (右下)
     paint.color = const Color(0xFFFBBC05);
     canvas.drawArc(rect, 0.4, 1.2, false, paint);
 
-    // �?(下左)
+    // 緑 (下左)
     paint.color = const Color(0xFF34A853);
     canvas.drawArc(rect, 1.6, 1.6, false, paint);
 
-    // �?(左上)
+    // 青 (左上)
     paint.color = const Color(0xFF4285F4);
     canvas.drawArc(rect, 3.2, 1.2, false, paint);
 
@@ -299,7 +299,7 @@ class _GoogleLogoPainter extends CustomPainter {
   bool shouldRepaint(_) => false;
 }
 
-// ── 7日間カレンダ�?───────────────────────────────────
+// ── 7日間カレンダー ───────────────────────────────────
 class WeeklyCalendar extends StatelessWidget {
   final Map<String, bool> history; // {'2025-11-15': true, ...}
 
@@ -313,12 +313,12 @@ class WeeklyCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const dayLabels = ['�?, '�?, '�?, '�?, '�?, '�?, '�?];
+    const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(7, (i) {
-        final offsetFromToday = 6 - i; // 6日前 �?今日
+        final offsetFromToday = 6 - i; // 6日前 → 今日
         final key     = _dateKey(offsetFromToday);
         final isToday = offsetFromToday == 0;
         final checked = history[key] ?? false;
@@ -363,7 +363,7 @@ class _DayDot extends StatelessWidget {
       border = Border.all(color: AppColors.border2, width: 2);
     } else {
       bg = AppColors.plumDim; fg = AppColors.plum;
-      border = Border.all(color: AppColors.plum.withOpacity(0.25));
+      border = Border.all(color: AppColors.plum.withValues(alpha: 0.25));
     }
 
     return Container(

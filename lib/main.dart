@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kyogen/demo_mode.dart';
 import 'package:kyogen/firebase_options.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/screens/onboarding_screen.dart';
@@ -13,15 +14,15 @@ import 'package:kyogen/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (!kDemoMode) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await NotificationService().initialize();
+  }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
-
-  // 権限リクエストのみ（トークン保存は認証後に行う）
-  await NotificationService().initialize();
 
   runApp(const ProviderScope(child: KyogenApp()));
 }
@@ -32,7 +33,7 @@ class KyogenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:            '今日も元�?,
+      title:            '今日も元気',
       theme:            AppTheme.theme,
       debugShowCheckedModeBanner: false,
       home:             const AppRouter(),
@@ -59,10 +60,14 @@ class _AppRouterState extends State<AppRouter> {
   }
 
   Future<void> _initialize() async {
+    if (kDemoMode) {
+      if (mounted) setState(() => _isInitializing = false);
+      return;
+    }
     if (FirebaseAuth.instance.currentUser == null) {
       await _auth.signInAnonymously();
     }
-    // 認証完了後にトークン�?Firestore へ保�?    await _notifications.saveToken();
+    await _notifications.saveToken();
     if (mounted) setState(() => _isInitializing = false);
   }
 
@@ -73,6 +78,8 @@ class _AppRouterState extends State<AppRouter> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    if (kDemoMode) return const MainScreen();
 
     return StreamBuilder<User?>(
       stream: _auth.userStream,

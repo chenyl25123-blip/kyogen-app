@@ -1,14 +1,17 @@
-﻿import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:kyogen/demo_mode.dart';
 
 class NotificationService {
-  final _fcm   = FirebaseMessaging.instance;
-  final _local = FlutterLocalNotificationsPlugin();
+  late final _fcm   = FirebaseMessaging.instance;
+  late final _local = FlutterLocalNotificationsPlugin();
 
   // 権限リクエスト・ローカル通知・バックグラウンドハンドラのみ初期化
-  // トークン保存は認証後�?saveToken() を別途呼�?  Future<void> initialize() async {
+  // トークン保存は認証後に saveToken() を別途呼ぶ
+  Future<void> initialize() async {
+    if (kDemoMode) return;
     await _fcm.requestPermission(
       alert: true, badge: true, sound: true,
     );
@@ -29,6 +32,7 @@ class NotificationService {
 
   // 認証完了後に main.dart から呼ぶ
   Future<void> saveToken() async {
+    if (kDemoMode) return;
     final token = await _fcm.getToken();
     if (token == null) return;
     await _updateToken(token);

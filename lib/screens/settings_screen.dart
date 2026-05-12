@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     HapticFeedback.mediumImpact();
     setState(() => _paused = val);
     await _service.togglePause(val);
-    _showSnack(val ? '機能を停止しまし�? : '機能を再開しまし�?🌿');
+    _showSnack(val ? '機能を停止しました' : '機能を再開しました 🌿');
   }
 
   void _showSnack(String msg) {
@@ -68,16 +68,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bg2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('リセットの確�?,
+        title: const Text('リセットの確認',
             style: TextStyle(color: AppColors.text)),
         content: const Text(
-          'すべてのデータが削除されます。\nこの操作は取り消せません�?,
+          'すべてのデータが削除されます。\nこの操作は取り消せません。',
           style: TextStyle(color: AppColors.text2, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセ�?,
+            child: const Text('キャンセル',
                 style: TextStyle(color: AppColors.text3)),
           ),
           TextButton(
@@ -139,8 +139,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     sliver: SliverList(delegate: SliverChildListDelegate([
 
-                      // ── 機能停止モー�?─────────────
-                      const SectionLabel('モー�?, padding: EdgeInsets.only(bottom: 8)),
+                      // ── 機能停止モード ─────────────
+                      const SectionLabel('モード', padding: EdgeInsets.only(bottom: 8)),
                       AppCard(
                         padding: EdgeInsets.zero,
                         child: Column(
@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('機能停止モー�?,
+                                        Text('機能停止モード',
                                             style: TextStyle(
                                               fontSize: 14, fontWeight: FontWeight.w600,
                                               color: AppColors.text,
@@ -183,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   color: AppColors.peachDim,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                      color: AppColors.peach.withOpacity(0.35)),
+                                      color: AppColors.peach.withValues(alpha: 0.35)),
                                 ),
                                 child: const Row(
                                   children: [
@@ -192,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'この間に何があっても連絡先へのメールは送信されませ�?,
+                                        'この間に何があっても連絡先へのメールは送信されません',
                                         style: TextStyle(
                                           fontSize: 11, color: AppColors.peach,
                                           height: 1.5,
@@ -223,11 +223,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('毎日のリマインダ�?,
+                                        Text('毎日のリマインダー',
                                             style: TextStyle(
                                               fontSize: 14, color: AppColors.text)),
                                         SizedBox(height: 2),
-                                        Text('�?1時にプッシュ通知',
+                                        Text('夜21時にプッシュ通知',
                                             style: TextStyle(
                                               fontSize: 11, color: AppColors.text3)),
                                       ],
@@ -249,7 +249,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Row(
                                 children: [
                                   const Expanded(
-                                    child: Text('通知�?,
+                                    child: Text('通知音',
                                         style: TextStyle(
                                           fontSize: 14, color: AppColors.text)),
                                   ),
@@ -294,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               onTap: _openTerms,
                             ),
                             const SettingsRow(
-                              title: 'バージョ�?,
+                              title: 'バージョン',
                               trailing: Text('1.0.0',
                                   style: TextStyle(
                                     fontSize: 13, color: AppColors.text3)),
@@ -340,8 +340,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   bool _submitted  = false;
   bool _submitting = false;
 
-  static const _categories = ['💡 改善要望', '🐛 不具�?, '🎨 デザイン', '💬 その�?];
-  static const _starLabels = ['', 'がっかり', 'もう少し', 'まあまあ', '良い�?, '最高！�?];
+  static const _categories = ['💡 改善要望', '🐛 不具合', '🎨 デザイン', '💬 その他'];
+  static const _starLabels = ['', 'がっかり', 'もう少し', 'まあまあ', '良い！', '最高！！'];
 
   @override
   void dispose() {
@@ -405,7 +405,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               const Center(child: Text('🙏', style: TextStyle(fontSize: 48))),
               const SizedBox(height: 16),
               const Center(
-                child: Text('ありがとうございます�?,
+                child: Text('ありがとうございます！',
                     style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: AppColors.text,
@@ -413,7 +413,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ),
               const SizedBox(height: 8),
               const Center(
-                child: Text('フィードバックを受け付けました。\n今後の改善に役立てます�?,
+                child: Text('フィードバックを受け付けました。\n今後の改善に役立てます。',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14, color: AppColors.text2, height: 1.5)),
@@ -429,13 +429,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         borderRadius: BorderRadius.circular(14)),
                     side: const BorderSide(color: AppColors.border),
                   ),
-                  child: const Text('閉じ�?,
+                  child: const Text('閉じる',
                       style: TextStyle(color: AppColors.text2)),
                 ),
               ),
             ] else ...[
 
-              Text('フィードバッ�?,
+              Text('フィードバック',
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
               const Text('ご意見・不具合をお知らせください',
@@ -456,7 +456,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: Text(
-                        star <= _rating ? '�? : '�?,
+                        star <= _rating ? '★' : '☆',
                         style: TextStyle(
                           fontSize: 32,
                           color: star <= _rating
@@ -552,7 +552,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('キャンセ�?,
+                  child: const Text('キャンセル',
                       style: TextStyle(color: AppColors.text3)),
                 ),
               ),

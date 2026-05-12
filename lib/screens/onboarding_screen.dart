@@ -1,8 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/services/auth_service.dart';
 import 'package:kyogen/theme/app_theme.dart';
-import 'main_screen.dart';
+import 'package:kyogen/screens/main_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -36,7 +36,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() => _starting = true);
     HapticFeedback.mediumImpact();
 
-    // 匿名ログイン（まだしていなければ�?    if (_auth.currentUser == null) {
+    // 匿名ログイン（まだしていなければ）
+    if (_auth.currentUser == null) {
       await _auth.signInAnonymously();
     }
 
@@ -77,7 +78,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.teal.withOpacity(0.3),
+                        color: AppColors.teal.withValues(alpha: 0.3),
                         blurRadius: 24, offset: const Offset(0, 8),
                       ),
                     ],
@@ -90,7 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 const SizedBox(height: 28),
 
                 // タイトル
-                const Text('今日も元�?,
+                const Text('今日も元気',
                   style: TextStyle(
                     fontSize: 32, fontWeight: FontWeight.w700,
                     color: AppColors.text,
@@ -108,24 +109,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 _StepCard(
                   number: '1',
                   title: '毎日1回、ボタンをタップ',
-                  desc: '時間は自由。朝でも夜でも�?�?回だけ�?,
+                  desc: '時間は自由。朝でも夜でも、1日1回だけ。',
                 ),
                 const SizedBox(height: 12),
                 _StepCard(
                   number: '2',
                   title: '2日間未確認でプッシュ通知',
-                  desc: 'まず自分へ警告が届きます�?,
+                  desc: 'まず自分へ警告が届きます。',
                 ),
                 const SizedBox(height: 12),
                 _StepCard(
                   number: '3',
-                  title: '3日目に緊急連絡先へメー�?,
-                  desc: '「○○さんの様子をご確認ください」が届きます�?,
+                  title: '3日目に緊急連絡先へメール',
+                  desc: '「○○さんの様子をご確認ください」が届きます。',
                 ),
 
                 const Spacer(),
 
-                // はじめるボタ�?                SizedBox(
+                // はじめるボタン
+                SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _starting ? null : _start,
@@ -152,7 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
                 const SizedBox(height: 12),
 
-                const Text('無料・登録不�?,
+                const Text('無料・登録不要',
                   style: TextStyle(fontSize: 12, color: AppColors.text3)),
                 const SizedBox(height: 32),
               ],
@@ -192,7 +194,7 @@ class _StepCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.tealDim,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.teal.withOpacity(0.3)),
+              border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
             ),
             child: Center(
               child: Text(number,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'home_screen.dart';
@@ -56,7 +56,7 @@ class _MainScreenState extends State<MainScreen> {
               _NavItem(
                 icon:  Icons.person_outline,
                 activeIcon: Icons.person,
-                label: '連絡�?,
+                label: '連絡先',
                 index: 1,
                 currentIndex: _currentIndex,
                 onTap: _onTap,

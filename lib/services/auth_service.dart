@@ -1,17 +1,17 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final _auth        = FirebaseAuth.instance;
-  final _googleSignIn = GoogleSignIn();
+  late final _googleSignIn = GoogleSignIn();
   final _db          = FirebaseFirestore.instance;
 
-  // ── 現在のユーザ�?Stream ─────────────────────────────
+  // ── 現在のユーザー Stream ─────────────────────────────
   Stream<User?> get userStream => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  // ── 匿名ログイン（初回起動時�?────────────────────────
+  // ── 匿名ログイン（初回起動時） ────────────────────────
   Future<UserCredential> signInAnonymously() async {
     final cred = await _auth.signInAnonymously();
     await _initUserDocument(cred.user!.uid);
@@ -37,8 +37,8 @@ class AuthService {
     }
   }
 
-  // ── 匿名 �?Google アカウント昇�?──────────────────────
-  // 匿名ユーザーがあとか�?Google と連携する場合
+  // ── 匿名 → Google アカウント昇格 ──────────────────────
+  // 匿名ユーザーがあとから Google と連携する場合
   Future<UserCredential?> linkGoogleAccount() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null || !currentUser.isAnonymous) return null;
@@ -54,7 +54,7 @@ class AuthService {
       );
       final result = await currentUser.linkWithCredential(cred);
 
-      // Firestore �?googleLinked フラグを更新
+      // Firestore で googleLinked フラグを更新
       await _db.collection('users').doc(currentUser.uid)
           .update({'googleLinked': true});
 
@@ -70,7 +70,7 @@ class AuthService {
     await _auth.signOut();
   }
 
-  // ── ユーザードキュメント初期�?────────────────────────
+  // ── ユーザードキュメント初期化 ────────────────────────
   Future<void> _initUserDocument(String uid, {bool googleLinked = false}) async {
     final ref = _db.collection('users').doc(uid);
     final doc = await ref.get();

@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ── CheckIn Model ──────────────────────────────────────────────────────────
 class CheckIn {
@@ -133,26 +133,29 @@ class AppUser {
 enum CheckInStatus {
   safe,     // 今日 確認済み
   pending,  // 今日未確認・昨日OK
-  warn,     // 昨日未確認・一昨日OK �?プッシュ通知タイミン�?  alert,    // 3日以上未確認       �?メール送信タイミン�?  paused,   // 機能停止�?}
+  warn,     // 昨日未確認・一昨日OK → プッシュ通知タイミング
+  alert,    // 3日以上未確認       → メール送信タイミング
+  paused,   // 機能停止中
+}
 
 extension CheckInStatusX on CheckInStatus {
   String get label {
     switch (this) {
-      case CheckInStatus.safe:    return '今日も元�?�?;
-      case CheckInStatus.pending: return '本日 未確�?;
-      case CheckInStatus.warn:    return '昨日 未確�?�?;
+      case CheckInStatus.safe:    return '今日も元気 ✓';
+      case CheckInStatus.pending: return '本日 未確認';
+      case CheckInStatus.warn:    return '昨日 未確認 ⚠';
       case CheckInStatus.alert:   return '連絡先へメール送信';
-      case CheckInStatus.paused:  return '機能停止�?;
+      case CheckInStatus.paused:  return '機能停止中';
     }
   }
 
   String get subtitle {
     switch (this) {
-      case CheckInStatus.safe:    return 'また明日も確認してくださ�?;
-      case CheckInStatus.pending: return '今日中にタップしてくださ�?;
+      case CheckInStatus.safe:    return 'また明日も確認してください';
+      case CheckInStatus.pending: return '今日中にタップしてください';
       case CheckInStatus.warn:    return '今日中に確認しないと連絡先へメールが届きます';
-      case CheckInStatus.alert:   return '3日間確認がありませんでし�?;
-      case CheckInStatus.paused:  return '通知・メール送信が停止されていま�?;
+      case CheckInStatus.alert:   return '3日間確認がありませんでした';
+      case CheckInStatus.paused:  return '通知・メール送信が停止されています';
     }
   }
 }

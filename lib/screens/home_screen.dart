@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/models.dart';
 import 'package:kyogen/services/checkin_service.dart';
@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen>
     _pulseCtrl.repeat(reverse: true);
   }
 
-  // history の範囲内のみ探索（範囲外は常�?null になるため）
+  // history の範囲内のみ探索（範囲外は常に null になるため）
   String _buildLastCheckInLabel(Map<String, bool> history) {
     final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
     for (int i = 0; i < history.length; i++) {
@@ -99,12 +99,12 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _onCheckIn() async {
     if (_status == CheckInStatus.safe) {
       HapticFeedback.mediumImpact();
-      _showSnack('本日は確認済みで�?�?);
+      _showSnack('本日は確認済みです ✓');
       return;
     }
     if (_status == CheckInStatus.paused) {
       HapticFeedback.mediumImpact();
-      _showSnack('機能停止中です。設定から再開できま�?);
+      _showSnack('機能停止中です。設定から再開できます');
       return;
     }
 
@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Row(
                 children: [
-                  Text('今日も元�?,
+                  Text('今日も元気',
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(width: 4),
                   Container(
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen>
                 duration: const Duration(milliseconds: 400),
                 style: const TextStyle(fontSize: 12, color: AppColors.text2),
                 child: Text(
-                  _status == CheckInStatus.paused ? '停止�? : '見守り中',
+                  _status == CheckInStatus.paused ? '停止中' : '見守り中',
                 ),
               ),
             ],
@@ -226,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
         decoration: BoxDecoration(
           color: AppColors.peachDim,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.peach.withOpacity(0.35)),
+          border: Border.all(color: AppColors.peach.withValues(alpha: 0.35)),
         ),
         child: const Row(
           children: [
@@ -236,12 +236,12 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('機能停止�?,
+                  Text('機能停止中',
                       style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700,
                         color: AppColors.peach,
                       )),
-                  Text('通知もメールも送信されませ�?,
+                  Text('通知もメールも送信されません',
                       style: TextStyle(fontSize: 11, color: AppColors.text2)),
                 ],
               ),
@@ -301,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen>
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _accentColor.withOpacity(0.18),
+                      _accentColor.withValues(alpha: 0.18),
                       Colors.transparent,
                     ],
                   ),
@@ -316,8 +316,8 @@ class _HomeScreenState extends State<HomeScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: _accentColor.withOpacity(
-                            0.6 * (2.0 - _pulseAnim.value)),
+                        color: _accentColor.withValues(
+                            alpha: 0.6 * (2.0 - _pulseAnim.value)),
                         width: 2,
                       ),
                     ),
@@ -331,12 +331,12 @@ class _HomeScreenState extends State<HomeScreen>
                   color: isSafe ? AppColors.tealDim : AppColors.bg2,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: _accentColor.withOpacity(isSafe ? 1.0 : 0.5),
+                    color: _accentColor.withValues(alpha: isSafe ? 1.0 : 0.5),
                     width: 3,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: _accentColor.withOpacity(0.15),
+                      color: _accentColor.withValues(alpha: 0.15),
                       blurRadius: 24, spreadRadius: 4,
                     ),
                   ],
@@ -400,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('前回の確�?,
+                const Text('前回の確認',
                     style: TextStyle(
                       fontSize: 10, color: AppColors.text3, letterSpacing: 0.1,
                     )),
