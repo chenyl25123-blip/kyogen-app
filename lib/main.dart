@@ -67,7 +67,8 @@ class _AppRouterState extends State<AppRouter> {
     if (FirebaseAuth.instance.currentUser == null) {
       await _auth.signInAnonymously();
     }
-    await _notifications.saveToken();
+    // FCM token is best-effort — don't block startup waiting for APNs
+    _notifications.saveToken();
     if (mounted) setState(() => _isInitializing = false);
   }
 
