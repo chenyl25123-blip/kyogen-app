@@ -76,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen>
       CheckInStatus.warn    => 1200,
       CheckInStatus.alert   => 900,
       CheckInStatus.paused  => 3200,
+      _ => 1800,
     };
     _pulseCtrl.duration = Duration(milliseconds: ms);
     _pulseCtrl.repeat(reverse: true);
