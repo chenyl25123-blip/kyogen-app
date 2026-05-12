@@ -10,14 +10,18 @@ workflows:
       - name: Get Flutter packages
         script: flutter pub get
 
-      - name: Install CocoaPods
-        script: |
-          cd ios
-          pod install
-
       - name: Build iOS (no code signing)
         script: |
-          flutter build ios --release --no-codesign
+          # flutter build ios handles pod install internally
+          # || true: xcode build succeeds but flutter post-check fails on signing — ignore it
+          flutter build ios --release --no-codesign || true
+
+          # Verify the .app was actually built
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "ERROR: Runner.app not found — xcode build may have failed"
+            exit 1
+          fi
+          echo "Runner.app built successfully"
 
       - name: Package unsigned IPA
         script: |
@@ -25,7 +29,8 @@ workflows:
           cd build/ios/iphoneos
           mkdir -p Payload
           cp -r Runner.app Payload/
-          zip -r ../unsigned/kyogen-unsigned.ipa Payload
+          zip -r ../unsigned/kyogen-unsigned.ipa Payload/
+          echo "IPA created: build/ios/unsigned/kyogen-unsigned.ipa"
 
     artifacts:
       - build/ios/unsigned/kyogen-unsigned.ipa
