@@ -8,7 +8,6 @@ build/
 # Firebase secrets
 GoogleService-Info.plist
 google-services.json
-lib/firebase_options.dart
 .env
 
 # Functions

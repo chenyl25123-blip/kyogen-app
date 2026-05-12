@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kyogen/firebase_options.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/screens/onboarding_screen.dart';
 import 'package:kyogen/screens/main_screen.dart';
@@ -12,7 +13,7 @@ import 'package:kyogen/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -31,7 +32,7 @@ class KyogenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:            '今日も元�?,
+      title:            '今日も元�?,
       theme:            AppTheme.theme,
       debugShowCheckedModeBanner: false,
       home:             const AppRouter(),
@@ -61,7 +62,7 @@ class _AppRouterState extends State<AppRouter> {
     if (FirebaseAuth.instance.currentUser == null) {
       await _auth.signInAnonymously();
     }
-    // 認証完了後にトークン�?Firestore へ保�?    await _notifications.saveToken();
+    // 認証完了後にトークン�?Firestore へ保�?    await _notifications.saveToken();
     if (mounted) setState(() => _isInitializing = false);
   }
 
