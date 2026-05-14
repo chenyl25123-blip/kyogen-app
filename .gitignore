@@ -6,7 +6,6 @@ build/
 *.g.dart
 
 # Firebase secrets
-GoogleService-Info.plist
 google-services.json
 .env
 
