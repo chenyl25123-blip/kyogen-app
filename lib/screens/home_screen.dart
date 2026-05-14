@@ -57,15 +57,26 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
-    final status  = await _service.getStatus();
-    final history = await _service.getHistory(7);
-    _updatePulseSpeed(status);
-    setState(() {
-      _status            = status;
-      _history           = history;
-      _loading           = false;
-      _lastCheckInLabel  = _buildLastCheckInLabel(history);
-    });
+    try {
+      final status  = await _service.getStatus()
+          .timeout(const Duration(seconds: 8));
+      final history = await _service.getHistory(7)
+          .timeout(const Duration(seconds: 8));
+      _updatePulseSpeed(status);
+      if (!mounted) return;
+      setState(() {
+        _status           = status;
+        _history          = history;
+        _loading          = false;
+        _lastCheckInLabel = _buildLastCheckInLabel(history);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _status  = CheckInStatus.pending;
+        _loading = false;
+      });
+    }
   }
 
   void _updatePulseSpeed(CheckInStatus status) {
