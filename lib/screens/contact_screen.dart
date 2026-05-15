@@ -34,11 +34,13 @@ class _ContactScreenState extends State<ContactScreen> {
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
-    final contact = await _contactService.getContact();
-    setState(() {
-      _contact = contact;
-      _loading = false;
-    });
+    try {
+      final contact = await _contactService.getContact()
+          .timeout(const Duration(seconds: 8));
+      if (mounted) setState(() { _contact = contact; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _checkGoogleLink() {

@@ -32,13 +32,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     setState(() => _loading = true);
-    final doc = await FirebaseFirestore.instance
-        .collection('users').doc(_uid).get();
-    if (mounted) {
-      setState(() {
-        _paused  = (doc.data()?['paused'] ?? false) as bool;
-        _loading = false;
-      });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users').doc(_uid).get()
+          .timeout(const Duration(seconds: 8));
+      if (mounted) {
+        setState(() {
+          _paused  = (doc.data()?['paused'] ?? false) as bool;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
