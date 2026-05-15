@@ -22,13 +22,13 @@ class CheckInService {
   Future<void> checkIn() async {
     if (kDemoMode) { _demoCheckins[_dateKey(0)] = true; return; }
     final today = _dateKey();
-    await _db
-        .collection('users').doc(_uid)
-        .collection('checkins').doc(today)
-        .set(CheckIn(
-          date:      today,
-          checkedAt: DateTime.now(),
-        ).toFirestore());
+    await Future.wait([
+      _db.collection('users').doc(_uid)
+          .collection('checkins').doc(today)
+          .set(CheckIn(date: today, checkedAt: DateTime.now()).toFirestore()),
+      _db.collection('users').doc(_uid)
+          .update({'lastNotifiedAt': null}),
+    ]);
   }
 
   Future<CheckInStatus> getStatus() async {

@@ -68,7 +68,6 @@ export const dailyCheckJob = functions
       // ── alert: メール送信（エピソードにつき1回のみ） ────
       if (!yesterdayCI && !twoDaysAgoCI) {
         // lastNotifiedAt が null にリセットされるまで再送しない
-        // （リセットは onCheckIn トリガーが担う）
         if (lastNotifiedAt) return;
 
         const contactDoc = await db

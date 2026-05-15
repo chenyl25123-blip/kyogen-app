@@ -318,10 +318,11 @@ class WeeklyCalendar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(7, (i) {
-        final offsetFromToday = 6 - i; // 6日前 → 今日
-        final key     = _dateKey(offsetFromToday);
-        final isToday = offsetFromToday == 0;
-        final checked = history[key] ?? false;
+        final offsetFromToday = 3 - i; // 3日前 → 今日(中央) → 3日後
+        final key      = _dateKey(offsetFromToday);
+        final isToday  = offsetFromToday == 0;
+        final isFuture = offsetFromToday < 0;
+        final checked  = !isFuture && (history[key] ?? false);
 
         final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
         final d   = jst.subtract(Duration(days: offsetFromToday));
@@ -329,7 +330,7 @@ class WeeklyCalendar extends StatelessWidget {
 
         return Column(
           children: [
-            _DayDot(isToday: isToday, checked: checked, date: d.day),
+            _DayDot(isToday: isToday, checked: checked, isFuture: isFuture, date: d.day),
             const SizedBox(height: 4),
             Text(dayLabel,
               style: const TextStyle(fontSize: 9, color: AppColors.text3)),
@@ -343,9 +344,10 @@ class WeeklyCalendar extends StatelessWidget {
 class _DayDot extends StatelessWidget {
   final bool isToday;
   final bool checked;
+  final bool isFuture;
   final int date;
 
-  const _DayDot({required this.isToday, required this.checked, required this.date});
+  const _DayDot({required this.isToday, required this.checked, required this.isFuture, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +363,9 @@ class _DayDot extends StatelessWidget {
     } else if (isToday) {
       bg = Colors.transparent; fg = AppColors.text3;
       border = Border.all(color: AppColors.border2, width: 2);
+    } else if (isFuture) {
+      bg = AppColors.bg3; fg = AppColors.text3;
+      border = Border.all(color: AppColors.border);
     } else {
       bg = AppColors.plumDim; fg = AppColors.plum;
       border = Border.all(color: AppColors.plum.withValues(alpha: 0.25));
@@ -375,7 +380,7 @@ class _DayDot extends StatelessWidget {
         child: checked
           ? const Icon(Icons.check, size: 14, color: Colors.white)
           : Text(
-              isToday ? date.toString() : '×',
+              (isToday || isFuture) ? date.toString() : '×',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,

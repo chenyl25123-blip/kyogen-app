@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/models.dart';
@@ -19,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   CheckInStatus _status = CheckInStatus.pending;
   Map<String, bool> _history = {};
-  bool _loading    = true;
+  bool _loading    = false;
   bool _checkingIn = false;
   String? _lastCheckInLabel;
 
@@ -56,26 +57,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() => _loading = true);
     try {
       final status  = await _service.getStatus()
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 3));
       final history = await _service.getHistory(7)
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 3));
       _updatePulseSpeed(status);
       if (!mounted) return;
       setState(() {
         _status           = status;
         _history          = history;
-        _loading          = false;
         _lastCheckInLabel = _buildLastCheckInLabel(history);
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _status  = CheckInStatus.pending;
-        _loading = false;
-      });
+      // Firebase unavailable — keep default UI, don't block
     }
   }
 
@@ -91,6 +86,26 @@ class _HomeScreenState extends State<HomeScreen>
     };
     _pulseCtrl.duration = Duration(milliseconds: ms);
     _pulseCtrl.repeat(reverse: true);
+  }
+
+  String _todayKey() {
+    final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
+    return '${jst.year}-${jst.month.toString().padLeft(2,'0')}-${jst.day.toString().padLeft(2,'0')}';
+  }
+
+  void _debugSimulateNextDay() {
+    const order = [
+      CheckInStatus.safe,
+      CheckInStatus.pending,
+      CheckInStatus.warn,
+      CheckInStatus.alert,
+    ];
+    final next = order[(order.indexOf(_status) + 1) % order.length];
+    _updatePulseSpeed(next);
+    setState(() {
+      _status = next;
+      _lastCheckInLabel = next == CheckInStatus.safe ? 'たった今' : 'まだ確認していません';
+    });
   }
 
   // history の範囲内のみ探索（範囲外は常に null になるため）
@@ -122,10 +137,21 @@ class _HomeScreenState extends State<HomeScreen>
 
     setState(() => _checkingIn = true);
     HapticFeedback.heavyImpact();
-    await _service.checkIn();
-    await _loadData();
-    setState(() => _checkingIn = false);
-    _showSnack('今日も元気！確認しました 🌿');
+    try {
+      await _service.checkIn().timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    // 即座にUIを更新（Firebase成否に関わらず）
+    final today = _todayKey();
+    _history[today] = true;
+    _updatePulseSpeed(CheckInStatus.safe);
+    if (mounted) {
+      setState(() {
+        _status = CheckInStatus.safe;
+        _checkingIn = false;
+        _lastCheckInLabel = 'たった今';
+      });
+      _showSnack('今日も元気！確認しました 🌿');
+    }
   }
 
   void _showSnack(String msg) {
@@ -212,6 +238,20 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           const Spacer(),
+          if (kDebugMode)
+            GestureDetector(
+              onTap: _debugSimulateNextDay,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.bg3,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border2),
+                ),
+                child: const Text('翌日 →', style: TextStyle(fontSize: 11, color: AppColors.text2)),
+              ),
+            ),
+          const SizedBox(width: 8),
           Row(
             children: [
               BlinkingDot(color: _accentColor),

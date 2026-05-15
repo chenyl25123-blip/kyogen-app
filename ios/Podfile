@@ -1,0 +1,70 @@
+# Uncomment this line to define a global platform for your project
+# platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+
+  # Fix: Swift 5.9/5.10/6.0 keywords not supported in Xcode 14.2 (Swift 5.7)
+  Dir.glob("#{installer.sandbox.root}/**/*.swift").each do |swift_file|
+    text = File.read(swift_file)
+    new_text = text
+      .gsub('nonisolated(unsafe) ', '')
+      .gsub(/\bsending\b /, '')
+      .gsub(/\b(internal|public|private|fileprivate|package) import\b/, 'import')
+      .gsub(/\bthrows\([^)]+\)/, 'throws')
+    if new_text != text
+      File.chmod(0644, swift_file)
+      File.write(swift_file, new_text)
+    end
+  end
+
+  # Fix: Remove duplicate Obj-C call method in HTTPSCallable.swift that conflicts in Swift 5.7
+  Dir.glob("#{installer.sandbox.root}/**/HTTPSCallable.swift").each do |file|
+    text = File.read(file)
+    new_text = text.sub(
+      /\s*@available\([^)]*(?:swift 1000\.0|unavailable)[^)]*\)[^\n]*\n\s*@objc\(callWithObject:completion:\)[^{]+\{[^}]*\}\n/m,
+      "\n"
+    )
+    if new_text != text
+      File.chmod(0644, file)
+      File.write(file, new_text)
+    end
+  end
+end
