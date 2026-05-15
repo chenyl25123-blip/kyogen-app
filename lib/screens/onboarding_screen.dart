@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/services/auth_service.dart';
+import 'package:kyogen/services/notification_service.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/screens/main_screen.dart';
 
@@ -40,6 +41,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (_auth.currentUser == null) {
       await _auth.signInAnonymously();
     }
+    // FCMトークン保存（best-effort）
+    NotificationService().saveToken();
 
     if (mounted) {
       Navigator.of(context).pushReplacement(

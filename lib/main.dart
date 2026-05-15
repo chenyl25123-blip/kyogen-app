@@ -64,11 +64,10 @@ class _AppRouterState extends State<AppRouter> {
       if (mounted) setState(() => _isInitializing = false);
       return;
     }
-    if (FirebaseAuth.instance.currentUser == null) {
-      await _auth.signInAnonymously();
+    // 既存ユーザーがいる場合のみトークンを更新（新規ユーザーは OnboardingScreen で処理）
+    if (FirebaseAuth.instance.currentUser != null) {
+      _notifications.saveToken();
     }
-    // FCM token is best-effort — don't block startup waiting for APNs
-    _notifications.saveToken();
     if (mounted) setState(() => _isInitializing = false);
   }
 
