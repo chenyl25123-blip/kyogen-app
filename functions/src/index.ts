@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 
 admin.initializeApp();
 const db     = admin.firestore();
-const resend = new Resend(functions.config().resend.key);
+const resend = new Resend(process.env.RESEND_KEY ?? '');
 
 // ── 日付ヘルパー (JST) ──────────────────────────────────
 function getJSTDateString(offsetDays = 0): string {
