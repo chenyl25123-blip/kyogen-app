@@ -16,15 +16,6 @@ function getJSTDateString(offsetDays = 0): string {
   return `${y}-${m}-${d}`;
 }
 
-// タイムスタンプを JST 日付文字列に変換
-function timestampToJSTDateString(ts: admin.firestore.Timestamp): string {
-  const ms  = ts.toMillis() + 9 * 60 * 60 * 1000;
-  const jst = new Date(ms);
-  const y   = jst.getUTCFullYear();
-  const m   = String(jst.getUTCMonth() + 1).padStart(2, '0');
-  const d   = String(jst.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 async function checkInExists(uid: string, date: string): Promise<boolean> {
   const doc = await db
