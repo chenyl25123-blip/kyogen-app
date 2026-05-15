@@ -74,13 +74,11 @@ export const dailyCheckJob = functions
         return;
       }
 
-      // ── alert: メール送信（1回のみ） ──────────────────
+      // ── alert: メール送信（エピソードにつき1回のみ） ────
       if (!yesterdayCI && !twoDaysAgoCI) {
-        // 重複送信防止: 今日すでに送信済みかチェック（修正済み）
-        if (lastNotifiedAt) {
-          const lastDateStr = timestampToJSTDateString(lastNotifiedAt);
-          if (lastDateStr === today) return;
-        }
+        // lastNotifiedAt が null にリセットされるまで再送しない
+        // （リセットは onCheckIn トリガーが担う）
+        if (lastNotifiedAt) return;
 
         const contactDoc = await db
           .collection('users').doc(uid)
@@ -113,7 +111,21 @@ export const dailyCheckJob = functions
     console.log(`dailyCheckJob completed for ${usersSnap.size} users`);
   });
 
-// ── ② 連絡先登録時の確認メール ─────────────────────────
+// ── ② 签到时重置通知状态 ────────────────────────────────
+// 用户重新签到后清空 lastNotifiedAt，使下次进入 alert 时可以再次发邮件
+export const onCheckIn = functions
+  .region('asia-northeast1')
+  .firestore
+  .document('users/{uid}/checkins/{date}')
+  .onCreate(async (_snap, ctx) => {
+    const uid = ctx.params.uid;
+    await db.collection('users').doc(uid).update({
+      lastNotifiedAt: null,
+      emailSentCount: 0,
+    });
+  });
+
+// ── ③ 連絡先登録時の確認メール ─────────────────────────
 // メールアドレスが変わった場合のみ送信（無限ループ防止）
 export const onContactSaved = functions
   .region('asia-northeast1')
@@ -146,7 +158,7 @@ export const onContactSaved = functions
     });
   });
 
-// ── ③ 新規ユーザー作成時の初期化 ─────────────────────
+// ── ④ 新規ユーザー作成時の初期化 ─────────────────────
 export const onUserCreated = functions
   .region('asia-northeast1')
   .auth
@@ -163,7 +175,7 @@ export const onUserCreated = functions
     }, { merge: true });
   });
 
-// ── ④ テストメール送信（Callable） ────────────────────
+// ── ⑤ テストメール送信（Callable） ────────────────────
 export const sendTestEmail = functions
   .region('asia-northeast1')
   .https.onCall(async (_data, ctx) => {
