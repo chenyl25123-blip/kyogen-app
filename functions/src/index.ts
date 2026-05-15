@@ -83,13 +83,10 @@ export const dailyCheckJob = functions
         const userName = authUser.displayName || 'ユーザー';
 
         await resend.emails.send({
-          from: '今日も元気 <noreply@kyogen.app>',
+          from: 'onboarding@resend.dev',
           to:   contact.email,
           subject: `${userName}さんの様子をご確認ください`,
           html: emergencyEmailHtml(userName),
-          headers: {
-            'List-Unsubscribe': '<mailto:unsubscribe@kyogen.app>',
-          },
         });
 
         await db.collection('users').doc(uid).update({
@@ -138,7 +135,7 @@ export const onContactSaved = functions
     const userName = authUser.displayName || 'ユーザー';
 
     await resend.emails.send({
-      from:    '今日も元気 <noreply@kyogen.app>',
+      from:    'onboarding@resend.dev',
       to:      afterData.email,
       subject: `${userName}さんの緊急連絡先に登録されました`,
       html:    confirmEmailHtml(userName, afterData.name),
@@ -189,7 +186,7 @@ export const sendTestEmail = functions
     const userName = authUser.displayName || 'ユーザー';
 
     await resend.emails.send({
-      from:    '今日も元気 <noreply@kyogen.app>',
+      from:    'onboarding@resend.dev',
       to:      contact.email,
       subject: `[テスト] ${userName}さんの様子をご確認ください`,
       html:    emergencyEmailHtml(userName),
