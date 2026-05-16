@@ -3,8 +3,8 @@ import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
 
 admin.initializeApp();
-const db     = admin.firestore();
-const resend = new Resend(process.env.RESEND_KEY ?? '');
+const db = admin.firestore();
+const getResend = () => new Resend(process.env.RESEND_KEY ?? '');
 
 // ── 日付ヘルパー (JST) ──────────────────────────────────
 function getJSTDateString(offsetDays = 0): string {
@@ -81,7 +81,7 @@ export const dailyCheckJob = functions
         const authUser = await admin.auth().getUser(uid);
         const userName = authUser.displayName || 'ユーザー';
 
-        await resend.emails.send({
+        await getResend().emails.send({
           from: 'onboarding@resend.dev',
           to:   contact.email,
           subject: `${userName}さんの様子をご確認ください`,
@@ -133,7 +133,7 @@ export const onContactSaved = functions
     const authUser = await admin.auth().getUser(uid);
     const userName = authUser.displayName || 'ユーザー';
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from:    'onboarding@resend.dev',
       to:      afterData.email,
       subject: `${userName}さんの緊急連絡先に登録されました`,
@@ -184,7 +184,7 @@ export const sendTestEmail = functions
     const authUser = await admin.auth().getUser(uid);
     const userName = authUser.displayName || 'ユーザー';
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from:    'onboarding@resend.dev',
       to:      contact.email,
       subject: `[テスト] ${userName}さんの様子をご確認ください`,

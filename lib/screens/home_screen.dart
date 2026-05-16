@@ -10,10 +10,10 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
 
   final _service = CheckInService();
@@ -55,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
     _loadData();
   }
+
+  Future<void> reload() => _loadData();
 
   Future<void> _loadData() async {
     try {

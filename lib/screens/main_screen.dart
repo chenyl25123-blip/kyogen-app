@@ -15,10 +15,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final _screens = const [
-    HomeScreen(),
-    ContactScreen(),
-    SettingsScreen(),
+  final _homeKey = GlobalKey<HomeScreenState>();
+  late final _screens = [
+    HomeScreen(key: _homeKey),
+    const ContactScreen(),
+    const SettingsScreen(),
   ];
 
   @override
@@ -78,6 +79,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _onTap(int index) {
     HapticFeedback.selectionClick();
+    if (index == 0) _homeKey.currentState?.reload();
     setState(() => _currentIndex = index);
   }
 }

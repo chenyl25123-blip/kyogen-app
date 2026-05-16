@@ -33,9 +33,13 @@ class NotificationService {
   // 認証完了後に main.dart から呼ぶ
   Future<void> saveToken() async {
     if (kDemoMode) return;
-    final token = await _fcm.getToken();
-    if (token == null) return;
-    await _updateToken(token);
+    try {
+      final token = await _fcm.getToken();
+      if (token == null) return;
+      await _updateToken(token);
+    } catch (_) {
+      // Simulator や APNs 未設定環境では getToken() が失敗する。無視してよい
+    }
   }
 
   Future<void> _updateToken(String token) async {
