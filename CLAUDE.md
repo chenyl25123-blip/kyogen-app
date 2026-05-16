@@ -5,7 +5,20 @@
 
 ## 開発体制
 - **Win11**: コード編集 → `git push`（メインのClaude Codeセッション）
-- **Mac (Monterey / Intel)**: `git pull` → `flutter run` で実機・Simulator確認
+- **Mac (Monterey / Intel)**: Mac固有の環境対応修正 → `git push` も可
+
+## ⚠️ Mac Claude への必須ルール
+**コードを変更・pushする前に必ず `git pull` すること。**
+Win11側と同時に作業しているため、pullなしでpushすると競合が発生する。
+
+手順:
+```bash
+git pull          # 必ず最初に実行
+# コード修正
+git add <file>
+git commit -m "fix: ..."
+git push
+```
 
 ## 技術スタック
 - Flutter (iOS優先) + Dart 3.x
@@ -49,6 +62,8 @@ cd ios && pod install && cd ..
 flutter run          # iPhone または Simulator
 ```
 
-## Win11 Claude との同期
-Win11側で変更 → `git push` → Mac側で `git pull` → `flutter run` で確認。
-変更内容はコミットメッセージで追える。
+## 両端の同期ルール
+- Win11・Mac どちらも作業前に必ず `git pull`
+- Mac は Flutter/iOS 環境固有の修正のみ行う
+- 機能追加・ロジック変更は Win11 側で行う
+- コミットメッセージで変更内容を追える状態を保つ
