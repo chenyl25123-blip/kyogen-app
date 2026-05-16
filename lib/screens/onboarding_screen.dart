@@ -25,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void initState() {
     super.initState();
     _fadeCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 800));
+      vsync: this, duration: const Duration(milliseconds: 900));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
   }
@@ -37,11 +37,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() => _starting = true);
     HapticFeedback.mediumImpact();
 
-    // 匿名ログイン（まだしていなければ）
     if (_auth.currentUser == null) {
       await _auth.signInAnonymously();
     }
-    // FCMトークン保存（best-effort）
     NotificationService().saveToken();
 
     if (mounted) {
@@ -66,81 +64,84 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 48),
-
-                // アイコン
-                Container(
-                  width: 96, height: 96,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.teal, Color(0xFF5A8A96)],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.teal.withValues(alpha: 0.3),
-                        blurRadius: 24, offset: const Offset(0, 8),
+                // スキップ
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 4),
+                    child: GestureDetector(
+                      onTap: _starting ? null : _start,
+                      child: const Text(
+                        'スキップ',
+                        style: TextStyle(fontSize: 13, color: AppColors.text3),
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.shield_outlined,
-                    size: 48, color: Colors.white,
+                    ),
                   ),
                 ),
+
+                // アイコン（羁絆紐帯）
+                Center(child: _buildAppIcon()),
                 const SizedBox(height: 28),
 
                 // タイトル
-                const Text('今日も元気',
-                  style: TextStyle(
-                    fontSize: 32, fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                    fontFamily: 'ZenMaruGothic',
-                  )),
-                const SizedBox(height: 8),
-                const Text('Daily Check-in',
-                  style: TextStyle(
-                    fontSize: 12, color: AppColors.text3,
-                    letterSpacing: 0.25,
-                  )),
-                const SizedBox(height: 48),
+                const Center(
+                  child: Text(
+                    'まもりんく',
+                    style: TextStyle(
+                      fontSize: 30, fontWeight: FontWeight.w700,
+                      color: AppColors.text, letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Center(
+                  child: Text(
+                    'つながりで、見守る安心。',
+                    style: TextStyle(
+                      fontSize: 13, color: AppColors.text2,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Center(
+                  child: Text(
+                    'DAILY CHECK-IN',
+                    style: TextStyle(
+                      fontSize: 9, color: AppColors.text3,
+                      letterSpacing: 1.8, fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
 
-                // ステップ説明
-                _StepCard(
-                  number: '1',
-                  title: '毎日1回、ボタンをタップ',
-                  desc: '時間は自由。朝でも夜でも、1日1回だけ。',
-                ),
-                const SizedBox(height: 12),
-                _StepCard(
-                  number: '2',
-                  title: '2日間未確認でプッシュ通知',
-                  desc: 'まず自分へ警告が届きます。',
-                ),
-                const SizedBox(height: 12),
-                _StepCard(
-                  number: '3',
-                  title: '3日目に緊急連絡先へメール',
-                  desc: '「○○さんの様子をご確認ください」が届きます。',
-                ),
+                // ステップ（カードなし・番号＋ヘアライン）
+                _buildStep('01', '毎日1回、ボタンをタップ',
+                    '時間は自由。朝でも夜でも、1日1回だけ。'),
+                const SizedBox(height: 18),
+                _buildStep('02', '2日間未確認でプッシュ通知',
+                    'まず自分へ警告が届きます。'),
+                const SizedBox(height: 18),
+                _buildStep('03', '3日目に緊急連絡先へメール',
+                    '「○○さんの様子をご確認ください」が届きます。'),
 
                 const Spacer(),
 
-                // はじめるボタン
+                // ピル型CTAボタン
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _starting ? null : _start,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.teal,
+                      backgroundColor: AppColors.slate,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.slate.withValues(alpha: 0.5),
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18)),
+                      shape: const StadiumBorder(),
                       elevation: 0,
+                      shadowColor: Colors.transparent,
                     ),
                     child: _starting
                       ? const SizedBox(
@@ -148,18 +149,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5, color: Colors.white),
                         )
-                      : const Text('はじめる',
+                      : const Text(
+                          'はじめる',
                           style: TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w700,
-                            fontFamily: 'ZenMaruGothic',
-                          )),
+                            fontSize: 16, fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                const Text('無料・登録不要',
-                  style: TextStyle(fontSize: 12, color: AppColors.text3)),
-                const SizedBox(height: 32),
+                const SizedBox(height: 11),
+                const Center(
+                  child: Text(
+                    '無料・登録不要',
+                    style: TextStyle(fontSize: 11, color: AppColors.text3),
+                  ),
+                ),
+                const SizedBox(height: 36),
               ],
             ),
           ),
@@ -167,65 +173,99 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ),
     );
   }
-}
 
-class _StepCard extends StatelessWidget {
-  final String number;
-  final String title;
-  final String desc;
-
-  const _StepCard({
-    required this.number,
-    required this.title,
-    required this.desc,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  // 羁絆紐帯アイコン
+  Widget _buildAppIcon() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: 100, height: 100,
       decoration: BoxDecoration(
         color: AppColors.bg2,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.tealDim,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
-            ),
-            child: Center(
-              child: Text(number,
-                style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700,
-                  color: AppColors.teal,
-                )),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                  style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                  )),
-                const SizedBox(height: 4),
-                Text(desc,
-                  style: const TextStyle(
-                    fontSize: 13, color: AppColors.text2, height: 1.5)),
-              ],
-            ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20, offset: const Offset(0, 6),
           ),
         ],
       ),
+      child: Center(
+        child: SizedBox(
+          width: 60, height: 38,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0, top: 1,
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFB8C5D4), width: 5,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0, top: 1,
+                child: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.amber, width: 5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.amber.withValues(alpha: 0.38),
+                        blurRadius: 12, spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 番号＋ヘアライン＋テキスト（カードなし）
+  Widget _buildStep(String num, String title, String desc) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              num,
+              style: const TextStyle(
+                fontSize: 11, color: AppColors.text3,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Container(height: 1, color: AppColors.border)),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w700,
+            color: AppColors.text, letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          desc,
+          style: const TextStyle(
+            fontSize: 12, color: AppColors.text2, height: 1.6,
+          ),
+        ),
+      ],
     );
   }
 }

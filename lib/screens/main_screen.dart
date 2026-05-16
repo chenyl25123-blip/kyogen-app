@@ -118,7 +118,7 @@ class _NavItem extends StatelessWidget {
                 isActive ? activeIcon : icon,
                 key: ValueKey(isActive),
                 size: 22,
-                color: isActive ? AppColors.teal : AppColors.text3,
+                color: isActive ? AppColors.slate : AppColors.text3,
               ),
             ),
             const SizedBox(height: 2),
@@ -127,7 +127,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.normal,
-                color: isActive ? AppColors.teal : AppColors.text3,
+                color: isActive ? AppColors.slate : AppColors.text3,
                 letterSpacing: 0.1,
               ),
             ),

@@ -33,7 +33,7 @@ class AppCard extends StatelessWidget {
   }
 }
 
-// ── セクションラベル ───────────────────────────────────
+// ── セクションラベル（MUJI 棚ラベル式） ───────────────
 class SectionLabel extends StatelessWidget {
   final String text;
   final EdgeInsetsGeometry? padding;
@@ -44,20 +44,28 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: padding ?? const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: AppColors.text3,
-          letterSpacing: 0.15,
-        ),
+      child: Row(
+        children: [
+          Container(width: 14, height: 1, color: AppColors.border),
+          const SizedBox(width: 6),
+          Text(
+            text.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text3,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(child: Container(height: 1, color: AppColors.border)),
+        ],
       ),
     );
   }
 }
 
-// ── 設定行（トグル付き） ───────────────────────────────
+// ── 設定行 ────────────────────────────────────────────
 class SettingsRow extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -123,10 +131,10 @@ class AppToggle extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         width: 48, height: 28,
         decoration: BoxDecoration(
-          color: value ? AppColors.teal : AppColors.bg3,
+          color: value ? AppColors.slate : AppColors.bg3,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: value ? AppColors.teal : AppColors.border,
+            color: value ? AppColors.slate : AppColors.border,
           ),
         ),
         child: AnimatedAlign(
@@ -209,7 +217,7 @@ class GoogleSignInButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.bg2,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(color: AppColors.border, width: 1.5),
           boxShadow: [
             BoxShadow(
@@ -223,14 +231,13 @@ class GoogleSignInButton extends StatelessWidget {
               child: SizedBox(
                 width: 20, height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.teal,
+                  strokeWidth: 2, color: AppColors.slate,
                 ),
               ),
             )
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Google ロゴ (SVG相当をCustomPainterで描画)
                 _GoogleLogo(),
                 const SizedBox(width: 10),
                 const Text(
@@ -264,28 +271,18 @@ class _GoogleLogoPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
     final center = rect.center;
-    final r = size.width / 2;
 
-    // 簡易Googleロゴ (4色の弧)
     final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 3;
 
-    // 赤 (上右)
     paint.color = const Color(0xFFEA4335);
     canvas.drawArc(rect, -1.2, 1.6, false, paint);
-
-    // 黄 (右下)
     paint.color = const Color(0xFFFBBC05);
     canvas.drawArc(rect, 0.4, 1.2, false, paint);
-
-    // 緑 (下左)
     paint.color = const Color(0xFF34A853);
     canvas.drawArc(rect, 1.6, 1.6, false, paint);
-
-    // 青 (左上)
     paint.color = const Color(0xFF4285F4);
     canvas.drawArc(rect, 3.2, 1.2, false, paint);
 
-    // 右側の横線（Gのバー）
     paint.strokeWidth = 3;
     paint.color = const Color(0xFF4285F4);
     canvas.drawLine(
@@ -301,7 +298,7 @@ class _GoogleLogoPainter extends CustomPainter {
 
 // ── 7日間カレンダー ───────────────────────────────────
 class WeeklyCalendar extends StatelessWidget {
-  final Map<String, bool> history; // {'2025-11-15': true, ...}
+  final Map<String, bool> history;
 
   const WeeklyCalendar({super.key, required this.history});
 
@@ -318,7 +315,7 @@ class WeeklyCalendar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(7, (i) {
-        final offsetFromToday = 3 - i; // 3日前 → 今日(中央) → 3日後
+        final offsetFromToday = 3 - i;
         final key      = _dateKey(offsetFromToday);
         final isToday  = offsetFromToday == 0;
         final isFuture = offsetFromToday < 0;
@@ -333,7 +330,11 @@ class WeeklyCalendar extends StatelessWidget {
             _DayDot(isToday: isToday, checked: checked, isFuture: isFuture, date: d.day),
             const SizedBox(height: 4),
             Text(dayLabel,
-              style: const TextStyle(fontSize: 9, color: AppColors.text3)),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: isToday ? FontWeight.w700 : FontWeight.normal,
+                color: isToday ? AppColors.text2 : AppColors.text3,
+              )),
           ],
         );
       }),
@@ -357,7 +358,7 @@ class _DayDot extends StatelessWidget {
 
     if (checked && isToday) {
       bg = AppColors.teal; fg = Colors.white;
-      border = Border.all(color: Colors.white, width: 2);
+      border = Border.all(color: AppColors.bg, width: 2);
     } else if (checked) {
       bg = AppColors.teal; fg = Colors.white;
     } else if (isToday) {

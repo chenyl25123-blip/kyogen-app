@@ -71,9 +71,7 @@ class HomeScreenState extends State<HomeScreen>
         _history          = history;
         _lastCheckInLabel = _buildLastCheckInLabel(history);
       });
-    } catch (_) {
-      // Firebase unavailable — keep default UI, don't block
-    }
+    } catch (_) {}
   }
 
   void _updatePulseSpeed(CheckInStatus status) {
@@ -110,7 +108,6 @@ class HomeScreenState extends State<HomeScreen>
     });
   }
 
-  // history の範囲内のみ探索（範囲外は常に null になるため）
   String _buildLastCheckInLabel(Map<String, bool> history) {
     final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
     for (int i = 0; i < history.length; i++) {
@@ -142,7 +139,6 @@ class HomeScreenState extends State<HomeScreen>
     try {
       await _service.checkIn().timeout(const Duration(seconds: 3));
     } catch (_) {}
-    // 即座にUIを更新（Firebase成否に関わらず）
     final today = _todayKey();
     _history[today] = true;
     _updatePulseSpeed(CheckInStatus.safe);
@@ -152,7 +148,7 @@ class HomeScreenState extends State<HomeScreen>
         _checkingIn = false;
         _lastCheckInLabel = 'たった今';
       });
-      _showSnack('今日も元気！確認しました 🌿');
+      _showSnack('今日も元気！確認しました');
     }
   }
 
@@ -160,7 +156,7 @@ class HomeScreenState extends State<HomeScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.teal,
+        backgroundColor: AppColors.slate,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -194,16 +190,18 @@ class HomeScreenState extends State<HomeScreen>
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+              ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
               : Column(
                   children: [
                     _buildHeader(),
                     if (_status == CheckInStatus.paused) _buildPauseBanner(),
+                    // 円ボタンを先頭に（画面の主役）
+                    Expanded(child: _buildCheckInButton()),
+                    // ステータステキストは円の下
                     _buildStatusArea(),
                     _buildCalendar(),
-                    Expanded(child: _buildCheckInButton()),
                     _buildLastCheckIn(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                   ],
                 ),
         ),
@@ -221,21 +219,21 @@ class HomeScreenState extends State<HomeScreen>
             children: [
               Row(
                 children: [
-                  Text('今日も元気',
+                  Text('まもりんく',
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(width: 4),
                   Container(
-                    width: 7, height: 7,
-                    decoration: const BoxDecoration(
-                      color: AppColors.teal, shape: BoxShape.circle,
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(
+                      color: _accentColor, shape: BoxShape.circle,
                     ),
                   ),
                 ],
               ),
               const Text('Daily Check-in',
                   style: TextStyle(
-                    fontSize: 10, color: AppColors.text3,
-                    letterSpacing: 0.25,
+                    fontSize: 9, color: AppColors.text3,
+                    letterSpacing: 0.8, fontWeight: FontWeight.w500,
                   )),
             ],
           ),
@@ -306,9 +304,10 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ステータステキスト（円の下に配置）
   Widget _buildStatusArea() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Column(
         children: [
           AnimatedDefaultTextStyle(
@@ -316,14 +315,13 @@ class HomeScreenState extends State<HomeScreen>
             style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.w700,
               color: _accentColor,
-              fontFamily: 'ZenMaruGothic',
             ),
-            child: Text(_status.label),
+            child: Text(_status.label, textAlign: TextAlign.center),
           ),
           const SizedBox(height: 4),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 400),
-            style: const TextStyle(fontSize: 13, color: AppColors.text2),
+            style: const TextStyle(fontSize: 12, color: AppColors.text2),
             child: Text(_status.subtitle, textAlign: TextAlign.center),
           ),
         ],
@@ -331,6 +329,7 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // カレンダー（カードなし・フローティング）
   Widget _buildCalendar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -338,6 +337,7 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // 大きな円ボタン（アイコンのみ・テキストは下に移動）
   Widget _buildCheckInButton() {
     final isSafe = _status == CheckInStatus.safe;
 
@@ -349,18 +349,20 @@ class HomeScreenState extends State<HomeScreen>
           child: Stack(
             alignment: Alignment.center,
             children: [
+              // 外側グロー
               Container(
                 width: 220, height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _accentColor.withValues(alpha: 0.18),
+                      _accentColor.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
                 ),
               ),
+              // パルスリング（未確認時）
               if (!isSafe) AnimatedBuilder(
                 animation: _pulseAnim,
                 builder: (_, __) => Transform.scale(
@@ -371,13 +373,14 @@ class HomeScreenState extends State<HomeScreen>
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: _accentColor.withValues(
-                            alpha: 0.6 * (2.0 - _pulseAnim.value)),
-                        width: 2,
+                            alpha: 0.55 * (2.0 - _pulseAnim.value)),
+                        width: 1.5,
                       ),
                     ),
                   ),
                 ),
               ),
+              // メイン円（アイコンのみ）
               AnimatedContainer(
                 duration: const Duration(milliseconds: 400),
                 width: 224, height: 224,
@@ -385,56 +388,40 @@ class HomeScreenState extends State<HomeScreen>
                   color: isSafe ? AppColors.tealDim : AppColors.bg2,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: _accentColor.withValues(alpha: isSafe ? 1.0 : 0.5),
-                    width: 3,
+                    color: _accentColor.withValues(alpha: isSafe ? 0.9 : 0.45),
+                    width: isSafe ? 1.5 : 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: _accentColor.withValues(alpha: 0.15),
+                      color: _accentColor.withValues(alpha: 0.12),
                       blurRadius: 24, spreadRadius: 4,
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      transitionBuilder: (child, anim) =>
-                          ScaleTransition(scale: anim, child: child),
-                      child: _checkingIn
-                          ? const SizedBox(
-                              key: ValueKey('loading'),
-                              width: 40, height: 40,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5, color: AppColors.teal,
-                              ),
-                            )
-                          : Icon(
-                              key: ValueKey(_status),
-                              isSafe
-                                  ? Icons.shield
-                                  : _status == CheckInStatus.alert
-                                      ? Icons.warning_amber_rounded
-                                      : Icons.shield_outlined,
-                              size: 52,
-                              color: _accentColor,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder: (child, anim) =>
+                        ScaleTransition(scale: anim, child: child),
+                    child: _checkingIn
+                        ? SizedBox(
+                            key: const ValueKey('loading'),
+                            width: 44, height: 44,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: _accentColor,
                             ),
-                    ),
-                    const SizedBox(height: 8),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 400),
-                      style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700,
-                        color: _accentColor,
-                        fontFamily: 'ZenMaruGothic',
-                      ),
-                      child: Text(
-                        isSafe ? '確認済み' : '今日も元気！',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
+                          )
+                        : Icon(
+                            key: ValueKey(_status),
+                            isSafe
+                                ? Icons.shield
+                                : _status == CheckInStatus.alert
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.shield_outlined,
+                            size: 64,
+                            color: _accentColor,
+                          ),
+                  ),
                 ),
               ),
             ],
@@ -444,32 +431,35 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // 最終確認（ヘアライン区切り・カードなし）
   Widget _buildLastCheckIn() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('前回の確認',
-                    style: TextStyle(
-                      fontSize: 10, color: AppColors.text3, letterSpacing: 0.1,
-                    )),
-                const SizedBox(height: 2),
-                Text(
-                  _lastCheckInLabel ?? 'まだ確認していません',
-                  style: const TextStyle(fontSize: 13, color: AppColors.text2),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Icon(Icons.access_time_rounded,
-                size: 18, color: AppColors.text3),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('前回の確認',
+                  style: TextStyle(
+                    fontSize: 9, color: AppColors.text3,
+                    letterSpacing: 0.8, fontWeight: FontWeight.w600,
+                  )),
+              const SizedBox(height: 2),
+              Text(
+                _lastCheckInLabel ?? 'まだ確認していません',
+                style: const TextStyle(fontSize: 13, color: AppColors.text2),
+              ),
+            ],
+          ),
+          const Spacer(),
+          const Icon(Icons.access_time_rounded,
+              size: 16, color: AppColors.text3),
+        ],
       ),
     );
   }

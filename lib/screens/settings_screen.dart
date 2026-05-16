@@ -58,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.teal,
+        backgroundColor: AppColors.slate,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -89,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('リセット',
                 style: TextStyle(
-                  color: AppColors.plum, fontWeight: FontWeight.w700)),
+                  color: AppColors.terra, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -129,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+            ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
             : CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
@@ -309,18 +309,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // ── リセット ──────────────────
+                      // ── リセット（ゴーストピルボタン）──
                       GestureDetector(
                         onTap: _confirmReset,
-                        child: const Center(
-                          child: Text('すべてのデータをリセット',
-                              style: TextStyle(
-                                fontSize: 14, color: AppColors.plum,
-                                fontWeight: FontWeight.w500,
-                              )),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppColors.terra.withValues(alpha: 0.4)),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Center(
+                            child: Text('すべてのデータをリセット',
+                                style: TextStyle(
+                                  fontSize: 13, color: AppColors.terra,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                )),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 40),
                     ])),
                   ),
                 ],
@@ -499,16 +509,16 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: selected ? AppColors.tealDim : Colors.transparent,
+                        color: selected ? AppColors.slateDim : Colors.transparent,
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: selected ? AppColors.teal : AppColors.border2,
+                          color: selected ? AppColors.slate : AppColors.border2,
                         ),
                       ),
                       child: Text(cat,
                           style: TextStyle(
                             fontSize: 13,
-                            color: selected ? AppColors.teal : AppColors.text2,
+                            color: selected ? AppColors.slate : AppColors.text2,
                             fontWeight: selected
                                 ? FontWeight.w600 : FontWeight.normal,
                           )),
@@ -534,11 +544,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 child: ElevatedButton(
                   onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.teal,
+                    backgroundColor: AppColors.slate,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                    shape: const StadiumBorder(),
                     elevation: 0,
                   ),
                   child: _submitting

@@ -21,7 +21,6 @@ class _ContactScreenState extends State<ContactScreen> {
   Contact? _contact;
   bool _loading        = true;
   bool _googleLinked   = false;
-  bool _googleSkipped  = false;
   bool _linkingGoogle  = false;
   bool _sendingTest    = false;
 
@@ -119,7 +118,7 @@ class _ContactScreenState extends State<ContactScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('削除する',
                 style: TextStyle(
-                  color: AppColors.plum, fontWeight: FontWeight.w700)),
+                  color: AppColors.terra, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -136,7 +135,7 @@ class _ContactScreenState extends State<ContactScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.teal,
+        backgroundColor: AppColors.slate,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -151,296 +150,290 @@ class _ContactScreenState extends State<ContactScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
-            : CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('緊急連絡先',
-                              style: Theme.of(context).textTheme.titleLarge),
-                          const SizedBox(height: 4),
-                          const Text('登録できる相手は1人のみです',
-                              style: TextStyle(
-                                fontSize: 14, color: AppColors.text2)),
-                        ],
-                      ),
-                    ),
-                  ),
+            ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
+            : !_googleLinked
+                ? _buildLoginGate()
+                : _buildContactContent(),
+      ),
+    );
+  }
 
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(delegate: SliverChildListDelegate([
+  // ── Google 未連携：ログインゲート ─────────────────────
+  Widget _buildLoginGate() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: [
+          const Spacer(flex: 2),
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.bg2,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border2, width: 1.5),
+            ),
+            child: const Icon(Icons.person_add_outlined,
+                color: AppColors.text3, size: 36),
+          ),
+          const SizedBox(height: 24),
+          const Text('緊急連絡先',
+              style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.w700,
+                color: AppColors.text,
+              )),
+          const SizedBox(height: 10),
+          const Text(
+            'Googleアカウントでログインすると\n緊急連絡先を設定できます。\n機種変更後も設定が引き継がれます。',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14, color: AppColors.text2, height: 1.7),
+          ),
+          const SizedBox(height: 36),
+          GoogleSignInButton(
+            onPressed: _onGoogleLogin,
+            isLoading: _linkingGoogle,
+          ),
+          const Spacer(flex: 3),
+        ],
+      ),
+    );
+  }
 
-                      // ── Google ログイン案内 ────────────
-                      if (!_googleLinked && !_googleSkipped) ...[
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Googleアカウントで同期',
-                                  style: TextStyle(
-                                    fontSize: 15, fontWeight: FontWeight.w700,
-                                    color: AppColors.text,
-                                  )),
-                              const SizedBox(height: 4),
-                              const Text(
-                                '機種変更や再インストール後も\n連絡先設定を引き継ぐことができます。',
-                                style: TextStyle(
-                                  fontSize: 13, color: AppColors.text2,
-                                  height: 1.5),
-                              ),
-                              const SizedBox(height: 16),
-                              GoogleSignInButton(
-                                onPressed: _onGoogleLogin,
-                                isLoading: _linkingGoogle,
-                              ),
-                              const SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () =>
-                                    setState(() => _googleSkipped = true),
-                                child: const Center(
-                                  child: Text('スキップして続ける',
-                                      style: TextStyle(
-                                        fontSize: 12, color: AppColors.text3)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+  // ── Google 連携済み：連絡先管理 ───────────────────────
+  Widget _buildContactContent() {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('緊急連絡先',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                const Text('登録できる相手は1人のみです',
+                    style: TextStyle(fontSize: 14, color: AppColors.text2)),
+              ],
+            ),
+          ),
+        ),
 
-                      // ── Google 連携済みバッジ ──────────
-                      if (_googleLinked) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.tealDim,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: AppColors.teal.withValues(alpha: 0.3)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.check_circle_outline,
-                                  color: AppColors.teal, size: 16),
-                              SizedBox(width: 8),
-                              Text('Googleアカウントと連携済み',
-                                  style: TextStyle(
-                                    fontSize: 12, color: AppColors.teal,
-                                    fontWeight: FontWeight.w600,
-                                  )),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          sliver: SliverList(delegate: SliverChildListDelegate([
 
-                      // ── 連絡先 未設定 ────────────────
-                      if (_contact == null || !_contact!.isSet) ...[
-                        AppCard(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 56, height: 56,
-                                decoration: BoxDecoration(
-                                  color: AppColors.peachDim,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.peach.withValues(alpha: 0.4),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: const Icon(Icons.person_add_outlined,
-                                    color: AppColors.peach, size: 26),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text('連絡先 未設定',
-                                  style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w700,
-                                    color: AppColors.text,
-                                  )),
-                              const SizedBox(height: 6),
-                              const Text(
-                                '今のままでも使えますが、\n緊急時に通知できる相手がいません。',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13, color: AppColors.text2,
-                                  height: 1.5),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: () =>
-                                      _openEditSheet(isNew: true),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.teal,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(14)),
-                                    elevation: 0,
-                                  ),
-                                  child: const Text('今すぐ設定する',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      // ── 連絡先 設定済み ───────────────
-                      if (_contact != null && _contact!.isSet) ...[
-                        AppCard(
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  _ContactAvatar(name: _contact!.name),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(_contact!.name,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.text,
-                                            )),
-                                        if (_contact!.relationship != null)
-                                          Text(_contact!.relationship!,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.text2)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              const Divider(height: 1, color: AppColors.border),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Text('メール',
-                                      style: TextStyle(
-                                        fontSize: 11, color: AppColors.text3,
-                                        letterSpacing: 0.1,
-                                      )),
-                                  const Spacer(),
-                                  Text(_contact!.email,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.text2)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        if (_contact!.confirmedAt != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppColors.tealDim,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: AppColors.teal.withValues(alpha: 0.25)),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.mark_email_read_outlined,
-                                    color: AppColors.teal, size: 16),
-                                SizedBox(width: 8),
-                                Text('確認メールを送信しました',
-                                    style: TextStyle(
-                                      fontSize: 12, color: AppColors.teal,
-                                      fontWeight: FontWeight.w600,
-                                    )),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('送信メッセージのプレビュー',
-                                  style: TextStyle(
-                                    fontSize: 10, color: AppColors.text3,
-                                    letterSpacing: 0.1,
-                                  )),
-                              const SizedBox(height: 8),
-                              Text(
-                                '「${_contact!.name}さんの様子をご確認ください。'
-                                '3日以上ご連絡がありません。」',
-                                style: const TextStyle(
-                                  fontSize: 13, color: AppColors.text2,
-                                  height: 1.5),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        AppCard(
-                          padding: EdgeInsets.zero,
-                          child: Column(
-                            children: [
-                              SettingsRow(
-                                title: '情報を変更する',
-                                trailing: const Icon(Icons.chevron_right,
-                                    size: 18, color: AppColors.text3),
-                                onTap: _openEditSheet,
-                                showDivider: false,
-                              ),
-                              SettingsRow(
-                                title: 'テストメールを送信',
-                                trailing: _sendingTest
-                                    ? const SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.teal,
-                                        ),
-                                      )
-                                    : const Icon(Icons.chevron_right,
-                                        size: 18, color: AppColors.text3),
-                                onTap: _sendingTest ? null : _sendTestEmail,
-                              ),
-                              SettingsRow(
-                                title: '連絡先を削除する',
-                                trailing: const Icon(Icons.chevron_right,
-                                    size: 18, color: AppColors.plum),
-                                onTap: _deleteContact,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 40),
-                    ])),
-                  ),
+            // ── Google 連携済みバッジ ──────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.slateDim,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.slate.withValues(alpha: 0.25)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      color: AppColors.slate, size: 16),
+                  SizedBox(width: 8),
+                  Text('Googleアカウントと連携済み',
+                      style: TextStyle(
+                        fontSize: 12, color: AppColors.slate,
+                        fontWeight: FontWeight.w600,
+                      )),
                 ],
               ),
-      ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── 連絡先 未設定 ────────────────
+            if (_contact == null || !_contact!.isSet) ...[
+              AppCard(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.peachDim,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.peach.withValues(alpha: 0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(Icons.person_add_outlined,
+                          color: AppColors.peach, size: 26),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('連絡先 未設定',
+                        style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        )),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '今のままでも使えますが、\n緊急時に通知できる相手がいません。',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13, color: AppColors.text2, height: 1.5),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _openEditSheet(isNew: true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.slate,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: const StadiumBorder(),
+                          elevation: 0,
+                        ),
+                        child: const Text('今すぐ設定する',
+                            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // ── 連絡先 設定済み ───────────────
+            if (_contact != null && _contact!.isSet) ...[
+              AppCard(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        _ContactAvatar(name: _contact!.name),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_contact!.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.text,
+                                  )),
+                              if (_contact!.relationship != null)
+                                Text(_contact!.relationship!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.text2)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1, color: AppColors.border),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('メール',
+                            style: TextStyle(
+                              fontSize: 11, color: AppColors.text3,
+                              letterSpacing: 0.1,
+                            )),
+                        const Spacer(),
+                        Text(_contact!.email,
+                            style: const TextStyle(
+                              fontSize: 13, color: AppColors.text2)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              if (_contact!.confirmedAt != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.slateDim,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.slate.withValues(alpha: 0.2)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.mark_email_read_outlined,
+                          color: AppColors.slate, size: 16),
+                      SizedBox(width: 8),
+                      Text('確認メールを送信しました',
+                          style: TextStyle(
+                            fontSize: 12, color: AppColors.slate,
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('送信メッセージのプレビュー',
+                        style: TextStyle(
+                          fontSize: 10, color: AppColors.text3,
+                          letterSpacing: 0.1,
+                        )),
+                    const SizedBox(height: 8),
+                    Text(
+                      '「${_contact!.name}さんの様子をご確認ください。'
+                      '3日以上ご連絡がありません。」',
+                      style: const TextStyle(
+                        fontSize: 13, color: AppColors.text2, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    SettingsRow(
+                      title: '情報を変更する',
+                      trailing: const Icon(Icons.chevron_right,
+                          size: 18, color: AppColors.text3),
+                      onTap: _openEditSheet,
+                      showDivider: false,
+                    ),
+                    SettingsRow(
+                      title: 'テストメールを送信',
+                      trailing: _sendingTest
+                          ? const SizedBox(
+                              width: 16, height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.slate),
+                            )
+                          : const Icon(Icons.chevron_right,
+                              size: 18, color: AppColors.text3),
+                      onTap: _sendingTest ? null : _sendTestEmail,
+                    ),
+                    SettingsRow(
+                      title: '連絡先を削除する',
+                      trailing: const Icon(Icons.chevron_right,
+                          size: 18, color: AppColors.terra),
+                      onTap: _deleteContact,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 40),
+          ])),
+        ),
+      ],
     );
   }
 }
@@ -590,11 +583,10 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
+                  backgroundColor: AppColors.slate,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                  shape: const StadiumBorder(),
                   elevation: 0,
                 ),
                 child: _saving

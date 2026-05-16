@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // ── 柔軟パステル ───────────────────────────────
-  static const bg       = Color(0xFFF5F3F8);
+  // ── ベース ────────────────────────────────────────────
+  static const bg       = Color(0xFFF7F5F0); // 暖米色
   static const bg2      = Color(0xFFFFFFFF);
-  static const bg3      = Color(0xFFEEEBF4);
-  static const border   = Color(0xFFE2DDED);
-  static const border2  = Color(0xFFCFC8E0);
+  static const bg3      = Color(0xFFEDEAE3); // 暖グレー
+  static const border   = Color(0xFFE0DAD0); // ヘアライン
+  static const border2  = Color(0xFFCCC7BC);
 
+  // ── アクション（操作UI専用） ──────────────────────────
+  static const slate    = Color(0xFF4A4035); // ボタン・Toggle・ナビ
+  static const slateDim = Color(0x144A4035);
+
+  // ── ステータス（ホーム画面の状態表示のみ） ────────────
   static const teal     = Color(0xFF7BA8B5); // 確認済み・安全
   static const tealDim  = Color(0x217BA8B5);
-  static const peach    = Color(0xFFE8A57C); // 警告
+  static const peach    = Color(0xFFE8A57C); // 未確認・警告
   static const peachDim = Color(0x21E8A57C);
   static const plum     = Color(0xFF8E5973); // 緊急
   static const plumDim  = Color(0x218E5973);
 
-  static const text     = Color(0xFF3A3645);
-  static const text2    = Color(0xFF7A7390);
-  static const text3    = Color(0xFFB0A8C4);
+  // ── 破壊的操作（削除・リセット専用） ─────────────────
+  static const terra    = Color(0xFFB25040);
+  static const terraDim = Color(0x14B25040);
+
+  // ── ブランド（アイコンリングのみ） ───────────────────
+  static const amber    = Color(0xFFF59E0B);
+  static const amberDim = Color(0x1AF59E0B);
+
+  // ── テキスト ─────────────────────────────────────────
+  static const text     = Color(0xFF2C2820);
+  static const text2    = Color(0xFF6B6358);
+  static const text3    = Color(0xFFA89E94);
 }
 
 class AppTheme {
@@ -26,9 +40,9 @@ class AppTheme {
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.bg,
       colorScheme: ColorScheme.light(
-        primary:   AppColors.teal,
+        primary:   AppColors.slate,
         secondary: AppColors.peach,
-        error:     AppColors.plum,
+        error:     AppColors.terra,
         surface:   AppColors.bg2,
         onPrimary: Colors.white,
         onSurface: AppColors.text,
@@ -62,7 +76,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.teal, width: 1.5),
+          borderSide: BorderSide(color: AppColors.slate, width: 1.5),
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         hintStyle: TextStyle(color: AppColors.text3),
@@ -78,15 +92,15 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.bg.withValues(alpha: 0.96),
-        selectedItemColor: AppColors.teal,
+        backgroundColor: AppColors.bg,
+        selectedItemColor: AppColors.slate,
         unselectedItemColor: AppColors.text3,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.1,
+        selectedLabelStyle: const TextStyle(
+          fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 0.1,
         ),
-        unselectedLabelStyle: TextStyle(fontSize: 9, letterSpacing: 0.1),
+        unselectedLabelStyle: const TextStyle(fontSize: 9, letterSpacing: 0.1),
       ),
     );
   }
