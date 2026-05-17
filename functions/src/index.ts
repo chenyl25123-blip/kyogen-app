@@ -206,7 +206,7 @@ function emergencyEmailHtml(userName: string): string {
               border:1px solid #e2dded;overflow:hidden">
     <div style="background:#7ba8b5;padding:32px;text-align:center">
       <p style="color:#fff;font-size:13px;letter-spacing:.15em;margin:0 0 8px;
-                text-transform:uppercase;opacity:.8">今日も元気</p>
+                text-transform:uppercase;opacity:.8">まもりんく</p>
       <h1 style="color:#fff;font-size:24px;font-weight:700;margin:0">
         様子のご確認のお願い
       </h1>
@@ -221,7 +221,7 @@ function emergencyEmailHtml(userName: string): string {
       <div style="background:#f5f3f8;border-radius:12px;padding:16px;margin-bottom:24px">
         <p style="color:#b0a8c4;font-size:11px;margin:0 0 4px;text-transform:uppercase;letter-spacing:.1em">このメールについて</p>
         <p style="color:#7a7390;font-size:13px;margin:0;line-height:1.6">
-          このメールは「今日も元気」アプリの安否確認サービスにより自動送信されました。
+          このメールは「まもりんく」アプリの安否確認サービスにより自動送信されました。
           ${userName}さんが緊急連絡先としてあなたを登録しています。
         </p>
       </div>
@@ -257,11 +257,11 @@ function confirmEmailHtml(userName: string, contactName: string): string {
         ${contactName} 様
       </p>
       <p style="color:#7a7390;font-size:14px;line-height:1.8;margin:0 0 16px">
-        <strong>${userName}</strong>さんが、あなたを「今日も元気」アプリの
+        <strong>${userName}</strong>さんが、あなたを「まもりんく」アプリの
         緊急連絡先として登録しました。
       </p>
       <p style="color:#7a7390;font-size:14px;line-height:1.8;margin:0 0 24px">
-        「今日も元気」は、毎日のチェックインで安否確認を行うアプリです。
+        「まもりんく」は、毎日のチェックインで安否確認を行うアプリです。
         ${userName}さんが3日以上チェックインされない場合、あなたへ自動でご連絡が届きます。
       </p>
       <div style="background:#f5f3f8;border-radius:12px;padding:16px">

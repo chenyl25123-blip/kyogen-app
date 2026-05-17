@@ -39,7 +39,7 @@ class KyogenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:            '今日も元気',
+      title:            'まもりんく',
       theme:            AppTheme.theme,
       debugShowCheckedModeBanner: false,
       home:             const AppRouter(),
