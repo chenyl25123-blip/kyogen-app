@@ -80,9 +80,18 @@ class _ContactScreenState extends State<ContactScreen> {
       await _contactService.saveContact(result);
       await _loadData();
       HapticFeedback.mediumImpact();
-      _showSnack(isNew
-          ? '保存しました。まもなく確認メールが届きます 📨'
-          : '保存しました ✓');
+      if (isNew) {
+        try {
+          await FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+              .httpsCallable('sendContactConfirmEmail')
+              .call();
+          _showSnack('保存しました。確認メールを送信しました 📨');
+        } catch (_) {
+          _showSnack('保存しました（確認メールの送信に失敗しました）');
+        }
+      } else {
+        _showSnack('保存しました ✓');
+      }
     }
   }
 
@@ -556,9 +565,10 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             const SectionLabel('お名前'),
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(hintText: '例: 田中 花子'),
+              keyboardType: TextInputType.text,
+              decoration: const InputDecoration(hintText: '田中 花子 / 张三 / John'),
               validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'お名前を入力してください' : null,
+                  ? '名前を入力してください' : null,
             ),
             const SizedBox(height: 14),
 
@@ -578,7 +588,8 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             const SectionLabel('続柄（任意）'),
             TextFormField(
               controller: _relCtrl,
-              decoration: const InputDecoration(hintText: '例: 母 / 友人 / 兄'),
+              keyboardType: TextInputType.text,
+              decoration: const InputDecoration(hintText: '母 / 友人 / 妈妈 / Friend'),
             ),
             const SizedBox(height: 24),
 

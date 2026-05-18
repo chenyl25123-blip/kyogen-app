@@ -18,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _service    = CheckInService();
   final _authService = AuthService();
+  final _nameCtrl   = TextEditingController();
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
@@ -25,11 +26,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _reminder = true;
   bool _sound    = true;
   bool _loading  = true;
+  bool _savingName = false;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -39,13 +47,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .collection('users').doc(_uid).get()
           .timeout(const Duration(seconds: 8));
       if (mounted) {
+        final data = doc.data();
         setState(() {
-          _paused  = (doc.data()?['paused'] ?? false) as bool;
+          _paused  = (data?['paused'] ?? false) as bool;
           _loading = false;
         });
+        _nameCtrl.text = (data?['displayName'] ?? '') as String;
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveName() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _savingName = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('users').doc(_uid)
+          .update({'displayName': name});
+      if (mounted) _showSnack('名前を保存しました ✓');
+    } catch (_) {
+      if (mounted) _showSnack('保存に失敗しました');
+    } finally {
+      if (mounted) setState(() => _savingName = false);
     }
   }
 
@@ -105,42 +131,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _confirmReset() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.bg2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('リセットの確認',
-            style: TextStyle(color: AppColors.text)),
-        content: const Text(
-          'すべてのデータが削除されます。\nこの操作は取り消せません。',
-          style: TextStyle(color: AppColors.text2, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセル',
-                style: TextStyle(color: AppColors.text3)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('リセット',
-                style: TextStyle(
-                  color: AppColors.terra, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await _service.resetAllData();
-      if (mounted) {
-        setState(() => _paused = false);
-        _showSnack('データをリセットしました');
-      }
-    }
-  }
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
@@ -181,6 +171,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     sliver: SliverList(delegate: SliverChildListDelegate([
+
+                      // ── 表示名 ────────────────────
+                      const SectionLabel('表示名', padding: EdgeInsets.only(bottom: 8)),
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('緊急メールで使用される名前',
+                                style: TextStyle(fontSize: 11, color: AppColors.text3)),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _nameCtrl,
+                                    keyboardType: TextInputType.text,
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) => _saveName(),
+                                    decoration: const InputDecoration(
+                                      hintText: '田中 太郎 / 张三',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  onPressed: _savingName ? null : _saveName,
+                                  child: _savingName
+                                      ? const SizedBox(
+                                          width: 16, height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2, color: AppColors.slate),
+                                        )
+                                      : const Text('保存',
+                                          style: TextStyle(color: AppColors.slate)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
 
                       // ── 機能停止モード ─────────────
                       const SectionLabel('モード', padding: EdgeInsets.only(bottom: 8)),
@@ -363,30 +395,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: Text('ログアウト',
                                 style: TextStyle(
                                   fontSize: 13, color: AppColors.slate,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.2,
-                                )),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── リセット（ゴーストピルボタン）──
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _confirmReset,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.terra.withValues(alpha: 0.4)),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Center(
-                            child: Text('すべてのデータをリセット',
-                                style: TextStyle(
-                                  fontSize: 13, color: AppColors.terra,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.2,
                                 )),

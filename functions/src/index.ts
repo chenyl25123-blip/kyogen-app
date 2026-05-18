@@ -119,36 +119,40 @@ export const onCheckIn = functions
     });
   });
 
-// ── ③ 連絡先登録時の確認メール ─────────────────────────
-// メールアドレスが変わった場合のみ送信（無限ループ防止）
-export const onContactSaved = functions
+// ── ③ 連絡先登録時の確認メール（Callable） ─────────────
+// クライアントから明示的に呼び出して送信＆フィードバックを返す
+export const sendContactConfirmEmail = functions
   .region('asia-northeast1')
-  .firestore
-  .document('users/{uid}/contact/main')
-  .onWrite(async (change, ctx) => {
-    if (!change.after.exists) return;
-
-    const afterData  = change.after.data()!;
-
-    // confirmedAt の更新だけの場合はスキップ（書き込みループ防止）
-    if (change.before.exists) {
-      const beforeData = change.before.data()!;
-      if (beforeData.email === afterData.email) return;
+  .https.onCall(async (_data, ctx) => {
+    if (!ctx.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'ログインが必要です');
     }
 
-    const uid      = ctx.params.uid;
+    const uid = ctx.auth.uid;
+    const contactDoc = await db
+      .collection('users').doc(uid)
+      .collection('contact').doc('main')
+      .get();
+
+    if (!contactDoc.exists) {
+      throw new functions.https.HttpsError('not-found', '連絡先が設定されていません');
+    }
+
+    const contact  = contactDoc.data()!;
     const userName = await getUserName(uid);
 
     await getResend().emails.send({
       from:    'onboarding@resend.dev',
-      to:      afterData.email,
+      to:      contact.email,
       subject: `${userName}さんの緊急連絡先に登録されました`,
-      html:    confirmEmailHtml(userName, afterData.name),
+      html:    confirmEmailHtml(userName, contact.name),
     });
 
-    await change.after.ref.update({
-      confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await db.collection('users').doc(uid)
+      .collection('contact').doc('main')
+      .update({ confirmedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    return { success: true };
   });
 
 // ── ④ 新規ユーザー作成時の初期化 ─────────────────────
