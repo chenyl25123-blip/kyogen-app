@@ -213,10 +213,10 @@ function emergencyEmailHtml(userName: string): string {
     </div>
     <div style="padding:32px">
       <p style="color:#3a3645;font-size:16px;line-height:1.8;margin:0 0 20px">
-        <strong>${userName}</strong>さんから、3日以上ご連絡がありません。
+        <strong>${userName}</strong>さんが、3日以上チェックインされていません。
       </p>
       <p style="color:#7a7390;font-size:14px;line-height:1.8;margin:0 0 24px">
-        何らかの理由で確認できていない可能性がありますが、念のためご様子をご確認いただけますでしょうか。
+        アプリへの毎日のチェックインが途切れています。念のため、お様子をご確認いただけますでしょうか。
       </p>
       <div style="background:#f5f3f8;border-radius:12px;padding:16px;margin-bottom:24px">
         <p style="color:#b0a8c4;font-size:11px;margin:0 0 4px;text-transform:uppercase;letter-spacing:.1em">このメールについて</p>

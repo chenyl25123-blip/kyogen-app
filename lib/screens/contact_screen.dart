@@ -79,7 +79,9 @@ class _ContactScreenState extends State<ContactScreen> {
       await _contactService.saveContact(result);
       await _loadData();
       HapticFeedback.mediumImpact();
-      _showSnack('保存しました。確認メールを送信しました 📨');
+      _showSnack(isNew
+          ? '保存しました。確認メールを送信しました 📨'
+          : '保存しました ✓');
     }
   }
 
@@ -387,7 +389,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '「${_contact!.name}さんの様子をご確認ください。'
-                      '3日以上ご連絡がありません。」',
+                      '3日以上チェックインがありません。」',
                       style: const TextStyle(
                         fontSize: 13, color: AppColors.text2, height: 1.5),
                     ),

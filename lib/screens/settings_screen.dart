@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:kyogen/services/auth_service.dart';
 import 'package:kyogen/services/checkin_service.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
@@ -15,7 +16,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _service = CheckInService();
+  final _service    = CheckInService();
+  final _authService = AuthService();
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
@@ -65,6 +67,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final isAnonymous = FirebaseAuth.instance.currentUser?.isAnonymous ?? true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bg2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('ログアウトの確認',
+            style: TextStyle(color: AppColors.text)),
+        content: Text(
+          isAnonymous
+              ? 'ログアウトすると、Googleと連携していないためデータが失われます。本当によろしいですか？'
+              : 'ログアウトします。次回はGoogleアカウントでログインしてデータを引き継げます。',
+          style: const TextStyle(color: AppColors.text2, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル',
+                style: TextStyle(color: AppColors.text3)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('ログアウト',
+                style: TextStyle(
+                  color: isAnonymous ? AppColors.terra : AppColors.slate,
+                  fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _authService.signOut();
+    }
   }
 
   Future<void> _confirmReset() async {
@@ -309,8 +347,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 32),
 
+                      // ── ログアウト ──────────────────
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _confirmSignOut,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppColors.slate.withValues(alpha: 0.4)),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Center(
+                            child: Text('ログアウト',
+                                style: TextStyle(
+                                  fontSize: 13, color: AppColors.slate,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                )),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       // ── リセット（ゴーストピルボタン）──
                       GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: _confirmReset,
                         child: Container(
                           width: double.infinity,
