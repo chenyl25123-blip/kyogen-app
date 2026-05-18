@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:kyogen/services/auth_service.dart';
+import 'package:kyogen/screens/legal_screen.dart';
 import 'package:kyogen/services/checkin_service.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
@@ -139,8 +139,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _openPrivacyPolicy() => _openUrl('https://kyogen.app/privacy');
-  void _openTerms()         => _openUrl('https://kyogen.app/terms');
+  void _openPrivacyPolicy() {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => const LegalScreen(title: 'プライバシーポリシー', content: kPrivacyPolicy),
+    ));
+  }
+
+  void _openTerms() {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => const LegalScreen(title: '利用規約', content: kTermsOfService),
+    ));
+  }
 
   void _openFeedbackSheet() {
     showModalBottomSheet(
