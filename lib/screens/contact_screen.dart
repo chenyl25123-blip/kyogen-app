@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -80,7 +81,7 @@ class _ContactScreenState extends State<ContactScreen> {
       await _loadData();
       HapticFeedback.mediumImpact();
       _showSnack(isNew
-          ? '保存しました。確認メールを送信しました 📨'
+          ? '保存しました。まもなく確認メールが届きます 📨'
           : '保存しました ✓');
     }
   }
@@ -409,6 +410,7 @@ class _ContactScreenState extends State<ContactScreen> {
                       onTap: _openEditSheet,
                       showDivider: false,
                     ),
+                    if (kDebugMode)
                     SettingsRow(
                       title: 'テストメールを送信',
                       trailing: _sendingTest

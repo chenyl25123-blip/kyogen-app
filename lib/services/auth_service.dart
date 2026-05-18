@@ -54,9 +54,10 @@ class AuthService {
       );
       final result = await currentUser.linkWithCredential(cred);
 
-      // Firestore で googleLinked フラグを更新
-      await _db.collection('users').doc(currentUser.uid)
-          .update({'googleLinked': true});
+      await _db.collection('users').doc(currentUser.uid).update({
+        'googleLinked': true,
+        'displayName':  result.user?.displayName ?? '',
+      });
 
       return result;
     } catch (e) {

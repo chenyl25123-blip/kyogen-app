@@ -17,6 +17,14 @@ function getJSTDateString(offsetDays = 0): string {
 }
 
 
+async function getUserName(uid: string): Promise<string> {
+  const userDoc = await db.collection('users').doc(uid).get();
+  const saved = userDoc.data()?.displayName;
+  if (saved && saved.trim()) return saved.trim();
+  const authUser = await admin.auth().getUser(uid);
+  return authUser.displayName || 'ユーザー';
+}
+
 async function checkInExists(uid: string, date: string): Promise<boolean> {
   const doc = await db
     .collection('users').doc(uid)
@@ -78,8 +86,7 @@ export const dailyCheckJob = functions
         if (!contactDoc.exists) return;
 
         const contact  = contactDoc.data()!;
-        const authUser = await admin.auth().getUser(uid);
-        const userName = authUser.displayName || 'ユーザー';
+        const userName = await getUserName(uid);
 
         await getResend().emails.send({
           from: 'onboarding@resend.dev',
@@ -130,8 +137,7 @@ export const onContactSaved = functions
     }
 
     const uid      = ctx.params.uid;
-    const authUser = await admin.auth().getUser(uid);
-    const userName = authUser.displayName || 'ユーザー';
+    const userName = await getUserName(uid);
 
     await getResend().emails.send({
       from:    'onboarding@resend.dev',
@@ -181,8 +187,7 @@ export const sendTestEmail = functions
     }
 
     const contact  = contactDoc.data()!;
-    const authUser = await admin.auth().getUser(uid);
-    const userName = authUser.displayName || 'ユーザー';
+    const userName = await getUserName(uid);
 
     await getResend().emails.send({
       from:    'onboarding@resend.dev',
