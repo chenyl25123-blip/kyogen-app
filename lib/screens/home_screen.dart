@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kyogen/models.dart';
@@ -137,18 +136,23 @@ class HomeScreenState extends State<HomeScreen>
     setState(() => _checkingIn = true);
     HapticFeedback.heavyImpact();
     try {
-      await _service.checkIn().timeout(const Duration(seconds: 3));
-    } catch (_) {}
-    final today = _todayKey();
-    _history[today] = true;
-    _updatePulseSpeed(CheckInStatus.safe);
-    if (mounted) {
-      setState(() {
-        _status = CheckInStatus.safe;
-        _checkingIn = false;
-        _lastCheckInLabel = 'たった今';
-      });
-      _showSnack('今日も元気！確認しました');
+      await _service.checkIn().timeout(const Duration(seconds: 6));
+      final today = _todayKey();
+      _history[today] = true;
+      _updatePulseSpeed(CheckInStatus.safe);
+      if (mounted) {
+        setState(() {
+          _status = CheckInStatus.safe;
+          _checkingIn = false;
+          _lastCheckInLabel = 'たった今';
+        });
+        _showSnack('今日も元気！確認しました');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _checkingIn = false);
+        _showSnack('通信エラーが発生しました。もう一度お試しください');
+      }
     }
   }
 
@@ -238,20 +242,6 @@ class HomeScreenState extends State<HomeScreen>
             ],
           ),
           const Spacer(),
-          if (kDebugMode)
-            GestureDetector(
-              onTap: _debugSimulateNextDay,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.bg3,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border2),
-                ),
-                child: const Text('翌日 →', style: TextStyle(fontSize: 11, color: AppColors.text2)),
-              ),
-            ),
-          const SizedBox(width: 8),
           Row(
             children: [
               BlinkingDot(color: _accentColor),

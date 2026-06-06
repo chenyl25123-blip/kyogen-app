@@ -16,19 +16,41 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!kDemoMode) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    // Enable offline persistence so UI loads even without network
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    );
-    await NotificationService().initialize();
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+      await NotificationService().initialize();
+    } catch (e, st) {
+      runApp(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '起動エラー:\n$e\n\n$st',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
   }
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
 
   runApp(const ProviderScope(child: KyogenApp()));
 }
@@ -39,10 +61,10 @@ class KyogenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:            'まもりんく',
-      theme:            AppTheme.theme,
+      title: 'まもりんく',
+      theme: AppTheme.theme,
       debugShowCheckedModeBanner: false,
-      home:             const AppRouter(),
+      home: const AppRouter(),
     );
   }
 }
@@ -55,9 +77,9 @@ class AppRouter extends StatefulWidget {
 }
 
 class _AppRouterState extends State<AppRouter> {
-  final _auth            = AuthService();
-  final _notifications   = NotificationService();
-  bool _isInitializing   = true;
+  final AuthService? _auth = kDemoMode ? null : AuthService();
+  final _notifications = NotificationService();
+  bool _isInitializing = true;
 
   @override
   void initState() {
@@ -70,8 +92,10 @@ class _AppRouterState extends State<AppRouter> {
       if (mounted) setState(() => _isInitializing = false);
       return;
     }
-    // 既存ユーザーがいる場合のみトークンを更新（新規ユーザーは OnboardingScreen で処理）
-    if (FirebaseAuth.instance.currentUser != null) {
+    // authStateChanges の最初の emit を待ってから判定
+    // currentUser はまだ null の場合があるため直接参照しない
+    final user = await FirebaseAuth.instance.authStateChanges().first;
+    if (user != null) {
       _notifications.saveToken();
     }
     if (mounted) setState(() => _isInitializing = false);
@@ -80,15 +104,13 @@ class _AppRouterState extends State<AppRouter> {
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (kDemoMode) return const MainScreen();
 
     return StreamBuilder<User?>(
-      stream: _auth.userStream,
+      stream: _auth!.userStream,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(

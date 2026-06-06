@@ -26,3 +26,10 @@ xcuserdata/
 
 # Claude
 .claude/
+
+# Firebase hosting cache
+.firebase/
+
+# Debug / temp files
+public/debug_report_*.md
+memory/

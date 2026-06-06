@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:kyogen/models.dart';
 import 'package:kyogen/services/contact_service.dart';
 import 'package:kyogen/services/auth_service.dart';
+import 'package:kyogen/demo_mode.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
 
@@ -17,17 +17,20 @@ class ContactScreen extends StatefulWidget {
 
 class _ContactScreenState extends State<ContactScreen> {
   final _contactService = ContactService();
-  final _authService    = AuthService();
+  final AuthService? _authService = kDemoMode ? null : AuthService();
 
   Contact? _contact;
-  bool _loading        = true;
-  bool _googleLinked   = false;
-  bool _linkingGoogle  = false;
-  bool _sendingTest    = false;
+  bool _loading = true;
+  bool _googleLinked = false;
+  bool _linkingGoogle = false;
 
   @override
   void initState() {
     super.initState();
+    if (kDemoMode) {
+      _loading = false;
+      return;
+    }
     _loadData();
     _checkGoogleLink();
   }
@@ -35,20 +38,26 @@ class _ContactScreenState extends State<ContactScreen> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     try {
-      final contact = await _contactService.getContact()
-          .timeout(const Duration(seconds: 8));
-      if (mounted) setState(() { _contact = contact; _loading = false; });
+      final contact = await _contactService.getContact().timeout(
+        const Duration(seconds: 8),
+      );
+      if (mounted)
+        setState(() {
+          _contact = contact;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   void _checkGoogleLink() {
-    final user = _authService.currentUser;
+    final user = _authService?.currentUser;
     if (user != null) {
       setState(() {
-        _googleLinked = user.providerData
-            .any((p) => p.providerId == 'google.com');
+        _googleLinked = user.providerData.any(
+          (p) => p.providerId == 'google.com',
+        );
       });
     }
   }
@@ -57,7 +66,7 @@ class _ContactScreenState extends State<ContactScreen> {
     setState(() => _linkingGoogle = true);
     HapticFeedback.mediumImpact();
     try {
-      final result = await _authService.linkGoogleAccount();
+      final result = await _authService!.linkGoogleAccount();
       if (result != null) {
         setState(() => _googleLinked = true);
         _showSnack('Googleアカウントと連携しました ✓');
@@ -82,9 +91,9 @@ class _ContactScreenState extends State<ContactScreen> {
       HapticFeedback.mediumImpact();
       if (isNew) {
         try {
-          await FirebaseFunctions.instanceFor(region: 'asia-northeast1')
-              .httpsCallable('sendContactConfirmEmail')
-              .call();
+          await FirebaseFunctions.instanceFor(
+            region: 'asia-northeast1',
+          ).httpsCallable('sendContactConfirmEmail').call();
           _showSnack('保存しました。確認メールを送信しました 📨');
         } catch (_) {
           _showSnack('保存しました（確認メールの送信に失敗しました）');
@@ -95,42 +104,34 @@ class _ContactScreenState extends State<ContactScreen> {
     }
   }
 
-  Future<void> _sendTestEmail() async {
-    setState(() => _sendingTest = true);
-    HapticFeedback.mediumImpact();
-    try {
-      await FirebaseFunctions.instanceFor(region: 'asia-northeast1')
-          .httpsCallable('sendTestEmail')
-          .call();
-      _showSnack('テストメールを送信しました 📨');
-    } catch (e) {
-      _showSnack('送信に失敗しました。もう一度お試しください');
-    } finally {
-      if (mounted) setState(() => _sendingTest = false);
-    }
-  }
-
   Future<void> _deleteContact() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bg2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('連絡先を削除',
-            style: TextStyle(color: AppColors.text)),
-        content: const Text('削除すると緊急時にメールを送れなくなります。',
-            style: TextStyle(color: AppColors.text2)),
+        title: const Text('連絡先を削除', style: TextStyle(color: AppColors.text)),
+        content: const Text(
+          '削除すると緊急時にメールを送れなくなります。',
+          style: TextStyle(color: AppColors.text2),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセル',
-                style: TextStyle(color: AppColors.text3)),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: AppColors.text3),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('削除する',
-                style: TextStyle(
-                  color: AppColors.terra, fontWeight: FontWeight.w700)),
+            child: const Text(
+              '削除する',
+              style: TextStyle(
+                color: AppColors.terra,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -162,10 +163,12 @@ class _ContactScreenState extends State<ContactScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.slate),
+              )
             : !_googleLinked
-                ? _buildLoginGate()
-                : _buildContactContent(),
+            ? _buildLoginGate()
+            : _buildContactContent(),
       ),
     );
   }
@@ -178,27 +181,33 @@ class _ContactScreenState extends State<ContactScreen> {
         children: [
           const Spacer(flex: 2),
           Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: AppColors.bg2,
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.border2, width: 1.5),
             ),
-            child: const Icon(Icons.person_add_outlined,
-                color: AppColors.text3, size: 36),
+            child: const Icon(
+              Icons.person_add_outlined,
+              color: AppColors.text3,
+              size: 36,
+            ),
           ),
           const SizedBox(height: 24),
-          const Text('緊急連絡先',
-              style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w700,
-                color: AppColors.text,
-              )),
+          const Text(
+            '緊急連絡先',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+          ),
           const SizedBox(height: 10),
           const Text(
             'Googleアカウントでログインすると\n緊急連絡先を設定できます。\n機種変更後も設定が引き継がれます。',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14, color: AppColors.text2, height: 1.7),
+            style: TextStyle(fontSize: 14, color: AppColors.text2, height: 1.7),
           ),
           const SizedBox(height: 36),
           GoogleSignInButton(
@@ -221,11 +230,12 @@ class _ContactScreenState extends State<ContactScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('緊急連絡先',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text('緊急連絡先', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 4),
-                const Text('登録できる相手は1人のみです',
-                    style: TextStyle(fontSize: 14, color: AppColors.text2)),
+                const Text(
+                  '登録できる相手は1人のみです',
+                  style: TextStyle(fontSize: 14, color: AppColors.text2),
+                ),
               ],
             ),
           ),
@@ -233,218 +243,237 @@ class _ContactScreenState extends State<ContactScreen> {
 
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          sliver: SliverList(delegate: SliverChildListDelegate([
-
-            // ── Google 連携済みバッジ ──────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.slateDim,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.slate.withValues(alpha: 0.25)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline,
-                      color: AppColors.slate, size: 16),
-                  SizedBox(width: 8),
-                  Text('Googleアカウントと連携済み',
-                      style: TextStyle(
-                        fontSize: 12, color: AppColors.slate,
-                        fontWeight: FontWeight.w600,
-                      )),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── 連絡先 未設定 ────────────────
-            if (_contact == null || !_contact!.isSet) ...[
-              AppCard(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.peachDim,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.peach.withValues(alpha: 0.4),
-                          width: 2,
-                        ),
-                      ),
-                      child: const Icon(Icons.person_add_outlined,
-                          color: AppColors.peach, size: 26),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text('連絡先 未設定',
-                        style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700,
-                          color: AppColors.text,
-                        )),
-                    const SizedBox(height: 6),
-                    const Text(
-                      '今のままでも使えますが、\n緊急時に通知できる相手がいません。',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13, color: AppColors.text2, height: 1.5),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _openEditSheet(isNew: true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.slate,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: const StadiumBorder(),
-                          elevation: 0,
-                        ),
-                        child: const Text('今すぐ設定する',
-                            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3)),
-                      ),
-                    ),
-                  ],
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              // ── Google 連携済みバッジ ──────────
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
                 ),
-              ),
-            ],
-
-            // ── 連絡先 設定済み ───────────────
-            if (_contact != null && _contact!.isSet) ...[
-              AppCard(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _ContactAvatar(name: _contact!.name),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_contact!.name,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.text,
-                                  )),
-                              if (_contact!.relationship != null)
-                                Text(_contact!.relationship!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.text2)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: AppColors.border),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Text('メール',
-                            style: TextStyle(
-                              fontSize: 11, color: AppColors.text3,
-                              letterSpacing: 0.1,
-                            )),
-                        const Spacer(),
-                        Text(_contact!.email,
-                            style: const TextStyle(
-                              fontSize: 13, color: AppColors.text2)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              if (_contact!.confirmedAt != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.slateDim,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppColors.slate.withValues(alpha: 0.2)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.mark_email_read_outlined,
-                          color: AppColors.slate, size: 16),
-                      SizedBox(width: 8),
-                      Text('確認メールを送信しました',
-                          style: TextStyle(
-                            fontSize: 12, color: AppColors.slate,
-                            fontWeight: FontWeight.w600,
-                          )),
-                    ],
+                decoration: BoxDecoration(
+                  color: AppColors.slateDim,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.slate.withValues(alpha: 0.25),
                   ),
                 ),
-                const SizedBox(height: 8),
-              ],
-
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: const Row(
                   children: [
-                    const Text('送信メッセージのプレビュー',
-                        style: TextStyle(
-                          fontSize: 10, color: AppColors.text3,
-                          letterSpacing: 0.1,
-                        )),
-                    const SizedBox(height: 8),
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: AppColors.slate,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
                     Text(
-                      '「${_contact!.name}さんの様子をご確認ください。'
-                      '3日以上チェックインがありません。」',
-                      style: const TextStyle(
-                        fontSize: 13, color: AppColors.text2, height: 1.5),
+                      'Googleアカウントと連携済み',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.slate,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
 
-              AppCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    SettingsRow(
-                      title: '情報を変更する',
-                      trailing: const Icon(Icons.chevron_right,
-                          size: 18, color: AppColors.text3),
-                      onTap: _openEditSheet,
-                      showDivider: false,
-                    ),
-                    if (kDebugMode)
-                    SettingsRow(
-                      title: 'テストメールを送信',
-                      trailing: _sendingTest
-                          ? const SizedBox(
-                              width: 16, height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.slate),
-                            )
-                          : const Icon(Icons.chevron_right,
-                              size: 18, color: AppColors.text3),
-                      onTap: _sendingTest ? null : _sendTestEmail,
-                    ),
-                    SettingsRow(
-                      title: '連絡先を削除する',
-                      trailing: const Icon(Icons.chevron_right,
-                          size: 18, color: AppColors.terra),
-                      onTap: _deleteContact,
-                    ),
-                  ],
+              // ── 連絡先 未設定 ────────────────
+              if (_contact == null || !_contact!.isSet) ...[
+                AppCard(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.peachDim,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.peach.withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person_add_outlined,
+                          color: AppColors.peach,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        '連絡先 未設定',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '今のままでも使えますが、\n緊急時に通知できる相手がいません。',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text2,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _openEditSheet(isNew: true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.slate,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: const StadiumBorder(),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            '今すぐ設定する',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
 
-            const SizedBox(height: 40),
-          ])),
+              // ── 連絡先 設定済み ───────────────
+              if (_contact != null && _contact!.isSet) ...[
+                AppCard(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _ContactAvatar(name: _contact!.name),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _contact!.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                if (_contact!.relationship != null)
+                                  Text(
+                                    _contact!.relationship!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.text2,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Text(
+                            'メール',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.text3,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            _contact!.email,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.text2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                if (_contact!.confirmedAt != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.slateDim,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.slate.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.mark_email_read_outlined,
+                          color: AppColors.slate,
+                          size: 16,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          '確認メールを送信しました',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.slate,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      SettingsRow(
+                        title: '情報を変更する',
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: AppColors.text3,
+                        ),
+                        onTap: _openEditSheet,
+                        showDivider: false,
+                      ),
+                      SettingsRow(
+                        title: '連絡先を削除する',
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: AppColors.terra,
+                        ),
+                        onTap: _deleteContact,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 40),
+            ]),
+          ),
         ),
       ],
     );
@@ -458,10 +487,12 @@ class _ContactAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 56, height: 56,
+      width: 56,
+      height: 56,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [AppColors.teal, Color(0xFF5A8A96)],
         ),
         shape: BoxShape.circle,
@@ -470,7 +501,8 @@ class _ContactAvatar extends StatelessWidget {
         child: Text(
           name.isNotEmpty ? name.characters.first : '?',
           style: const TextStyle(
-            fontSize: 22, fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
@@ -488,19 +520,19 @@ class _ContactEditSheet extends StatefulWidget {
 }
 
 class _ContactEditSheetState extends State<_ContactEditSheet> {
-  final _nameCtrl  = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _relCtrl   = TextEditingController();
-  final _formKey   = GlobalKey<FormState>();
-  bool _saving     = false;
+  final _relCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.initial != null) {
-      _nameCtrl.text  = widget.initial!.name;
+      _nameCtrl.text = widget.initial!.name;
       _emailCtrl.text = widget.initial!.email;
-      _relCtrl.text   = widget.initial!.relationship ?? '';
+      _relCtrl.text = widget.initial!.relationship ?? '';
     }
   }
 
@@ -517,10 +549,10 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
     setState(() => _saving = true);
 
     final contact = Contact(
-      name:         _nameCtrl.text.trim(),
-      email:        _emailCtrl.text.trim(),
+      name: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
       relationship: _relCtrl.text.trim().isEmpty ? null : _relCtrl.text.trim(),
-      updatedAt:    DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     Navigator.pop(context, contact);
@@ -546,7 +578,8 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.border2,
                   borderRadius: BorderRadius.circular(999),
@@ -555,11 +588,12 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             ),
             const SizedBox(height: 20),
 
-            Text('連絡先を編集',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text('連絡先を編集', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 6),
-            const Text('保存すると相手に確認メールが自動送信されます',
-                style: TextStyle(fontSize: 12, color: AppColors.text2)),
+            const Text(
+              '保存すると相手に確認メールが自動送信されます',
+              style: TextStyle(fontSize: 12, color: AppColors.text2),
+            ),
             const SizedBox(height: 20),
 
             const SectionLabel('お名前'),
@@ -567,8 +601,8 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               controller: _nameCtrl,
               keyboardType: TextInputType.text,
               decoration: const InputDecoration(hintText: '田中 花子 / 张三 / John'),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? '名前を入力してください' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? '名前を入力してください' : null,
             ),
             const SizedBox(height: 14),
 
@@ -579,7 +613,11 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               decoration: const InputDecoration(hintText: 'hanako@example.com'),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'メールを入力してください';
-                if (!v.contains('@')) return '正しいメールアドレスを入力してください';
+                final emailRegex = RegExp(
+                  r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+\.[a-zA-Z]{2,}$',
+                );
+                if (!emailRegex.hasMatch(v.trim()))
+                  return '正しいメールアドレスを入力してください';
                 return null;
               },
             ),
@@ -589,7 +627,9 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             TextFormField(
               controller: _relCtrl,
               keyboardType: TextInputType.text,
-              decoration: const InputDecoration(hintText: '母 / 友人 / 妈妈 / Friend'),
+              decoration: const InputDecoration(
+                hintText: '母 / 友人 / 妈妈 / Friend',
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -606,13 +646,20 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
                 ),
                 child: _saving
                     ? const SizedBox(
-                        width: 20, height: 20,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('保存して確認メールを送信',
+                    : const Text(
+                        '保存して確認メールを送信',
                         style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 10),
@@ -621,8 +668,10 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('キャンセル',
-                    style: TextStyle(color: AppColors.text3, fontSize: 14)),
+                child: const Text(
+                  'キャンセル',
+                  style: TextStyle(color: AppColors.text3, fontSize: 14),
+                ),
               ),
             ),
           ],

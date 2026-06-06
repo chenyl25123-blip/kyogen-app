@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kyogen/services/auth_service.dart';
-import 'package:kyogen/screens/legal_screen.dart';
 import 'package:kyogen/services/checkin_service.dart';
+import 'package:kyogen/demo_mode.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
 
@@ -16,27 +17,38 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _service    = CheckInService();
-  final _authService = AuthService();
-  final _nameCtrl   = TextEditingController();
+  final _service = CheckInService();
+  final AuthService? _authService = kDemoMode ? null : AuthService();
+  final _nameCtrl = TextEditingController();
 
-  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+  String get _uid {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Not authenticated');
+    return uid;
+  }
 
-  bool _paused   = false;
-  bool _reminder = true;
-  bool _sound    = true;
-  bool _loading  = true;
+  bool _paused = false;
+  bool _loading = true;
   bool _savingName = false;
+  bool _editingName = false;
+  String _savedName = '';
+
+  final _nameFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    if (kDemoMode) {
+      _loading = false;
+      return;
+    }
     _loadSettings();
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
@@ -44,34 +56,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _loading = true);
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('users').doc(_uid).get()
+          .collection('users')
+          .doc(_uid)
+          .get()
           .timeout(const Duration(seconds: 8));
       if (mounted) {
         final data = doc.data();
         setState(() {
-          _paused  = (data?['paused'] ?? false) as bool;
+          _paused = (data?['paused'] ?? false) as bool;
           _loading = false;
         });
-        _nameCtrl.text = (data?['displayName'] ?? '') as String;
+        final name = (data?['displayName'] ?? '') as String;
+        _nameCtrl.text = name;
+        _savedName = name;
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  void _startEditName() {
+    setState(() => _editingName = true);
+    Future.microtask(() => _nameFocus.requestFocus());
+  }
+
+  void _cancelEditName() {
+    _nameCtrl.text = _savedName;
+    setState(() => _editingName = false);
+    _nameFocus.unfocus();
+  }
+
   Future<void> _saveName() async {
     final name = _nameCtrl.text.trim();
-    if (name.isEmpty) return;
+    if (name.isEmpty) {
+      _showSnack('名前を入力してください');
+      return;
+    }
     setState(() => _savingName = true);
     try {
-      await FirebaseFirestore.instance
-          .collection('users').doc(_uid)
-          .update({'displayName': name});
-      if (mounted) _showSnack('名前を保存しました ✓');
+      await FirebaseFirestore.instance.collection('users').doc(_uid).update({
+        'displayName': name,
+      });
+      if (mounted) {
+        setState(() {
+          _savedName = name;
+          _editingName = false;
+          _savingName = false;
+        });
+        _nameFocus.unfocus();
+        _showSnack('名前を保存しました ✓');
+      }
     } catch (_) {
-      if (mounted) _showSnack('保存に失敗しました');
-    } finally {
-      if (mounted) setState(() => _savingName = false);
+      if (mounted) {
+        setState(() => _savingName = false);
+        _showSnack('保存に失敗しました');
+      }
     }
   }
 
@@ -95,15 +134,149 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildNameDisplay() {
+    final hasName = _savedName.isNotEmpty;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasName ? _savedName : '未設定',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: hasName ? AppColors.text : AppColors.text3,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                '緊急メールで使用される名前',
+                style: TextStyle(fontSize: 11, color: AppColors.text3),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: _startEditName,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.bg3,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_outlined, size: 13, color: AppColors.text2),
+                SizedBox(width: 4),
+                Text(
+                  '編集',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNameEditor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '緊急メールで使用される名前',
+          style: TextStyle(fontSize: 11, color: AppColors.text3),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _nameCtrl,
+          focusNode: _nameFocus,
+          keyboardType: TextInputType.name,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _saveName(),
+          style: const TextStyle(
+            fontSize: 16,
+            color: AppColors.text,
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: const InputDecoration(hintText: '田中 太郎 / 张三'),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _savingName ? null : _cancelEditName,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: const BorderSide(color: AppColors.border),
+                  foregroundColor: AppColors.text2,
+                ),
+                child: const Text(
+                  'キャンセル',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _savingName ? null : _saveName,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.slate,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: _savingName
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        '保存',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Future<void> _confirmSignOut() async {
-    final isAnonymous = FirebaseAuth.instance.currentUser?.isAnonymous ?? true;
+    final isAnonymous = kDemoMode
+        ? false
+        : (FirebaseAuth.instance.currentUser?.isAnonymous ?? true);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bg2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('ログアウトの確認',
-            style: TextStyle(color: AppColors.text)),
+        title: const Text('ログアウトの確認', style: TextStyle(color: AppColors.text)),
         content: Text(
           isAnonymous
               ? 'ログアウトすると、Googleと連携していないためデータが失われます。本当によろしいですか？'
@@ -113,24 +286,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセル',
-                style: TextStyle(color: AppColors.text3)),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: AppColors.text3),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('ログアウト',
-                style: TextStyle(
-                  color: isAnonymous ? AppColors.terra : AppColors.slate,
-                  fontWeight: FontWeight.w700)),
+            child: Text(
+              'ログアウト',
+              style: TextStyle(
+                color: isAnonymous ? AppColors.terra : AppColors.slate,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
     );
     if (confirmed == true) {
-      await _authService.signOut();
+      await _authService?.signOut();
     }
   }
-
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
@@ -140,15 +317,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openPrivacyPolicy() {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => const LegalScreen(title: 'プライバシーポリシー', content: kPrivacyPolicy),
-    ));
+    _openUrl('https://projects-696e9.web.app/privacy');
   }
 
   void _openTerms() {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => const LegalScreen(title: '利用規約', content: kTermsOfService),
-    ));
+    _openUrl('https://projects-696e9.web.app/terms');
   }
 
   void _openFeedbackSheet() {
@@ -166,252 +339,224 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.slate),
+              )
             : CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                      child: Text('設定',
-                          style: Theme.of(context).textTheme.titleLarge),
+                      child: Text(
+                        '設定',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ),
                   ),
 
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(delegate: SliverChildListDelegate([
-
-                      // ── 表示名 ────────────────────
-                      const SectionLabel('表示名', padding: EdgeInsets.only(bottom: 8)),
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('緊急メールで使用される名前',
-                                style: TextStyle(fontSize: 11, color: AppColors.text3)),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _nameCtrl,
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.done,
-                                    onSubmitted: (_) => _saveName(),
-                                    decoration: const InputDecoration(
-                                      hintText: '田中 太郎 / 张三',
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                TextButton(
-                                  onPressed: _savingName ? null : _saveName,
-                                  child: _savingName
-                                      ? const SizedBox(
-                                          width: 16, height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2, color: AppColors.slate),
-                                        )
-                                      : const Text('保存',
-                                          style: TextStyle(color: AppColors.slate)),
-                                ),
-                              ],
-                            ),
-                          ],
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        // ── 表示名 ────────────────────
+                        const SectionLabel(
+                          '表示名',
+                          padding: EdgeInsets.only(bottom: 8),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          child: AppCard(
+                            child: _editingName
+                                ? _buildNameEditor()
+                                : _buildNameDisplay(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-                      // ── 機能停止モード ─────────────
-                      const SectionLabel('モード', padding: EdgeInsets.only(bottom: 8)),
-                      AppCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                              child: Row(
-                                children: [
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('機能停止モード',
-                                            style: TextStyle(
-                                              fontSize: 14, fontWeight: FontWeight.w600,
-                                              color: AppColors.text,
-                                            )),
-                                        SizedBox(height: 2),
-                                        Text('旅行・入院中などに。通知・メール送信をすべて停止',
-                                            style: TextStyle(
-                                              fontSize: 11, color: AppColors.text3)),
-                                      ],
-                                    ),
-                                  ),
-                                  AppToggle(
-                                    value: _paused,
-                                    onChanged: _togglePause,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (_paused) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: AppColors.peachDim,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: AppColors.peach.withValues(alpha: 0.35)),
+                        // ── 機能停止モード ─────────────
+                        const SectionLabel(
+                          'モード',
+                          padding: EdgeInsets.only(bottom: 8),
+                        ),
+                        AppCard(
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  0,
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
-                                    Icon(Icons.info_outline,
-                                        color: AppColors.peach, size: 16),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'この間に何があっても連絡先へのメールは送信されません',
-                                        style: TextStyle(
-                                          fontSize: 11, color: AppColors.peach,
-                                          height: 1.5,
-                                        ),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '機能停止モード',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.text,
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            '旅行・入院中などに。通知・メール送信をすべて停止',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.text3,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    AppToggle(
+                                      value: _paused,
+                                      onChanged: _togglePause,
                                     ),
                                   ],
                                 ),
                               ),
-                            ] else
-                              const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── 通知 ──────────────────────
-                      const SectionLabel('通知', padding: EdgeInsets.only(bottom: 8)),
-                      AppCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                              child: Row(
-                                children: [
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('毎日のリマインダー',
-                                            style: TextStyle(
-                                              fontSize: 14, color: AppColors.text)),
-                                        SizedBox(height: 2),
-                                        Text('夜21時にプッシュ通知',
-                                            style: TextStyle(
-                                              fontSize: 11, color: AppColors.text3)),
-                                      ],
+                              if (_paused) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  margin: const EdgeInsets.fromLTRB(
+                                    12,
+                                    0,
+                                    12,
+                                    12,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.peachDim,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.peach.withValues(
+                                        alpha: 0.35,
+                                      ),
                                     ),
                                   ),
-                                  AppToggle(
-                                    value: _reminder,
-                                    onChanged: (val) {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _reminder = val);
-                                    },
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        color: AppColors.peach,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'この間に何があっても連絡先へのメールは送信されません',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.peach,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            const Divider(height: 1, color: AppColors.border),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                              child: Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text('通知音',
-                                        style: TextStyle(
-                                          fontSize: 14, color: AppColors.text)),
-                                  ),
-                                  AppToggle(
-                                    value: _sound,
-                                    onChanged: (val) {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _sound = val);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── サポート ──────────────────
-                      const SectionLabel('サポート', padding: EdgeInsets.only(bottom: 8)),
-                      AppCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            SettingsRow(
-                              title: 'フィードバックを送る',
-                              trailing: const Icon(Icons.chevron_right,
-                                  size: 18, color: AppColors.text3),
-                              onTap: _openFeedbackSheet,
-                              showDivider: false,
-                            ),
-                            SettingsRow(
-                              title: 'プライバシーポリシー',
-                              trailing: const Icon(Icons.open_in_new,
-                                  size: 16, color: AppColors.text3),
-                              onTap: _openPrivacyPolicy,
-                            ),
-                            SettingsRow(
-                              title: '利用規約',
-                              trailing: const Icon(Icons.open_in_new,
-                                  size: 16, color: AppColors.text3),
-                              onTap: _openTerms,
-                            ),
-                            const SettingsRow(
-                              title: 'バージョン',
-                              trailing: Text('1.0.0',
-                                  style: TextStyle(
-                                    fontSize: 13, color: AppColors.text3)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // ── ログアウト ──────────────────
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _confirmSignOut,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.slate.withValues(alpha: 0.4)),
-                            borderRadius: BorderRadius.circular(999),
+                                ),
+                              ] else
+                                const SizedBox(height: 12),
+                            ],
                           ),
-                          child: const Center(
-                            child: Text('ログアウト',
+                        ),
+                        const SizedBox(height: 20),
+
+                        const SizedBox(height: 0),
+
+                        // ── サポート ──────────────────
+                        const SectionLabel(
+                          'サポート',
+                          padding: EdgeInsets.only(bottom: 8),
+                        ),
+                        AppCard(
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            children: [
+                              SettingsRow(
+                                title: 'フィードバックを送る',
+                                trailing: const Icon(
+                                  Icons.chevron_right,
+                                  size: 18,
+                                  color: AppColors.text3,
+                                ),
+                                onTap: _openFeedbackSheet,
+                                showDivider: false,
+                              ),
+                              SettingsRow(
+                                title: 'プライバシーポリシー',
+                                trailing: const Icon(
+                                  Icons.open_in_new,
+                                  size: 16,
+                                  color: AppColors.text3,
+                                ),
+                                onTap: _openPrivacyPolicy,
+                              ),
+                              SettingsRow(
+                                title: '利用規約',
+                                trailing: const Icon(
+                                  Icons.open_in_new,
+                                  size: 16,
+                                  color: AppColors.text3,
+                                ),
+                                onTap: _openTerms,
+                              ),
+                              const SettingsRow(
+                                title: 'バージョン',
+                                trailing: Text(
+                                  '1.0.0',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.text3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // ── ログアウト ──────────────────
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _confirmSignOut,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: AppColors.slate.withValues(alpha: 0.4),
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'ログアウト',
                                 style: TextStyle(
-                                  fontSize: 13, color: AppColors.slate,
+                                  fontSize: 13,
+                                  color: AppColors.slate,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.2,
-                                )),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 40),
-                    ])),
+                        const SizedBox(height: 40),
+                      ]),
+                    ),
                   ),
                 ],
               ),
@@ -429,11 +574,12 @@ class _FeedbackSheet extends StatefulWidget {
 }
 
 class _FeedbackSheetState extends State<_FeedbackSheet> {
-  int _rating      = 0;
+  int _rating = 0;
   String? _category;
-  final _textCtrl  = TextEditingController();
-  bool _submitted  = false;
+  final _textCtrl = TextEditingController();
+  bool _submitted = false;
   bool _submitting = false;
+  String? _validationMsg;
 
   static const _categories = ['💡 改善要望', '🐛 不具合', '🎨 デザイン', '💬 その他'];
   static const _starLabels = ['', 'がっかり', 'もう少し', 'まあまあ', '良い！', '最高！！'];
@@ -446,24 +592,34 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
   Future<void> _submit() async {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('評価を選んでください'),
-            backgroundColor: AppColors.peach),
-      );
+      setState(() => _validationMsg = '評価（星）を選んでください');
       return;
     }
-    HapticFeedback.mediumImpact();
-    setState(() => _submitting = true);
-
-    await FirebaseFirestore.instance.collection('feedback').add({
-      'uid':       FirebaseAuth.instance.currentUser?.uid,
-      'rating':    _rating,
-      'category':  _category,
-      'text':      _textCtrl.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
+    setState(() {
+      _validationMsg = null;
+      _submitting = true;
     });
-
-    if (mounted) setState(() { _submitted = true; _submitting = false; });
+    HapticFeedback.mediumImpact();
+    try {
+      await FirebaseFirestore.instance.collection('feedback').add({
+        'uid': FirebaseAuth.instance.currentUser?.uid,
+        'rating': _rating,
+        'category': _category,
+        'text': _textCtrl.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted)
+        setState(() {
+          _submitted = true;
+          _submitting = false;
+        });
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _submitting = false;
+          _validationMsg = '送信に失敗しました。もう一度お試しください';
+        });
+    }
   }
 
   @override
@@ -472,187 +628,265 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
     return Container(
       constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9),
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       margin: EdgeInsets.only(bottom: bottom),
       decoration: const BoxDecoration(
         color: AppColors.bg2,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border2,
-                  borderRadius: BorderRadius.circular(999),
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── スクロール領域 ──────────────────────────────
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border2,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (_submitted) ...[
+                    const SizedBox(height: 20),
+                    const Center(
+                      child: Text('🙏', style: TextStyle(fontSize: 48)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Center(
+                      child: Text(
+                        'ありがとうございます！',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Center(
+                      child: Text(
+                        'フィードバックを受け付けました。\n今後の改善に役立てます。',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.text2,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ] else ...[
+                    Text(
+                      'フィードバック',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'ご意見・不具合をお知らせください',
+                      style: TextStyle(fontSize: 14, color: AppColors.text2),
+                    ),
+                    const SizedBox(height: 24),
+
+                    const SectionLabel('評価'),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (i) {
+                        final star = i + 1;
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _rating = star);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              star <= _rating ? '★' : '☆',
+                              style: TextStyle(
+                                fontSize: 32,
+                                color: star <= _rating
+                                    ? AppColors.peach
+                                    : AppColors.text3,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    if (_rating > 0)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            _starLabels[_rating],
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.text2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+
+                    const SectionLabel('カテゴリ'),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _categories.map((cat) {
+                        final selected = _category == cat;
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _category = cat);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? AppColors.slateDim
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: selected
+                                    ? AppColors.slate
+                                    : AppColors.border2,
+                              ),
+                            ),
+                            child: Text(
+                              cat,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: selected
+                                    ? AppColors.slate
+                                    : AppColors.text2,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    const SectionLabel('詳細（任意）'),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _textCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'ご意見や不具合の内容をご記入ください',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+          ),
 
-            if (_submitted) ...[
-              const SizedBox(height: 20),
-              const Center(child: Text('🙏', style: TextStyle(fontSize: 48))),
-              const SizedBox(height: 16),
-              const Center(
-                child: Text('ありがとうございます！',
-                    style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700,
-                      color: AppColors.text,
-                    )),
+          // ── Sticky フッター（常にキーボードの上に固定） ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
               ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text('フィードバックを受け付けました。\n今後の改善に役立てます。',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14, color: AppColors.text2, height: 1.5)),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    side: const BorderSide(color: AppColors.border),
-                  ),
-                  child: const Text('閉じる',
-                      style: TextStyle(color: AppColors.text2)),
-                ),
-              ),
-            ] else ...[
-
-              Text('フィードバック',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 4),
-              const Text('ご意見・不具合をお知らせください',
-                  style: TextStyle(fontSize: 14, color: AppColors.text2)),
-              const SizedBox(height: 24),
-
-              const SectionLabel('評価'),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final star = i + 1;
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _rating = star);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text(
-                        star <= _rating ? '★' : '☆',
-                        style: TextStyle(
-                          fontSize: 32,
-                          color: star <= _rating
-                              ? AppColors.peach : AppColors.text3,
+            ),
+            child: _submitted
+                ? SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                      child: const Text(
+                        '閉じる',
+                        style: TextStyle(color: AppColors.text2),
                       ),
                     ),
-                  );
-                }),
-              ),
-              if (_rating > 0)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(_starLabels[_rating],
-                        style: const TextStyle(
-                          fontSize: 13, color: AppColors.text2)),
-                  ),
-                ),
-              const SizedBox(height: 20),
-
-              const SectionLabel('カテゴリ'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _categories.map((cat) {
-                  final selected = _category == cat;
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _category = cat);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: selected ? AppColors.slateDim : Colors.transparent,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: selected ? AppColors.slate : AppColors.border2,
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_validationMsg != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            _validationMsg!,
+                            style: const TextStyle(
+                              color: AppColors.peach,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.slate,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: const StadiumBorder(),
+                            elevation: 0,
+                          ),
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  '送信する',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
                         ),
                       ),
-                      child: Text(cat,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: selected ? AppColors.slate : AppColors.text2,
-                            fontWeight: selected
-                                ? FontWeight.w600 : FontWeight.normal,
-                          )),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-
-              const SectionLabel('詳細（任意）'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _textCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'ご意見や不具合の内容をご記入ください',
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.slate,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: const StadiumBorder(),
-                    elevation: 0,
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'キャンセル',
+                            style: TextStyle(color: AppColors.text3),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('送信する',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('キャンセル',
-                      style: TextStyle(color: AppColors.text3)),
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

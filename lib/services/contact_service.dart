@@ -7,7 +7,11 @@ class ContactService {
   late final _db   = FirebaseFirestore.instance;
   late final _auth = FirebaseAuth.instance;
 
-  String get _uid => _auth.currentUser!.uid;
+  String get _uid {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw StateError('Not authenticated');
+    return uid;
+  }
 
   static Contact? _demoContact;
 

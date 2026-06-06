@@ -1,10 +1,26 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 admin.initializeApp();
 const db = admin.firestore();
-const getResend = () => new Resend(process.env.RESEND_KEY ?? '');
+
+const getTransporter = () => nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER ?? '',
+    pass: process.env.GMAIL_PASS ?? '',
+  },
+});
+
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  await getTransporter().sendMail({
+    from: `"まもりんく" <${process.env.GMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+}
 
 // ── 日付ヘルパー (JST) ──────────────────────────────────
 function getJSTDateString(offsetDays = 0): string {
@@ -22,7 +38,7 @@ async function getUserName(uid: string): Promise<string> {
   const saved = userDoc.data()?.displayName;
   if (saved && saved.trim()) return saved.trim();
   const authUser = await admin.auth().getUser(uid);
-  return authUser.displayName || 'ユーザー';
+  return authUser.displayName || authUser.email || 'ユーザー';
 }
 
 async function checkInExists(uid: string, date: string): Promise<boolean> {
@@ -33,7 +49,7 @@ async function checkInExists(uid: string, date: string): Promise<boolean> {
   return doc.exists;
 }
 
-// ── ① 毎日定時チェック (JST 09:00) ─────────────────────
+// ── ① 毎日定時チェック (JST 09:00) - 推送のみ ─────────────
 export const dailyCheckJob = functions
   .region('asia-northeast1')
   .pubsub
@@ -47,33 +63,71 @@ export const dailyCheckJob = functions
     const usersSnap = await db.collection('users').get();
 
     await Promise.all(usersSnap.docs.map(async (userDoc) => {
-      const { paused, fcmToken, lastNotifiedAt } = userDoc.data();
+      const { paused, fcmToken, createdAt } = userDoc.data();
       const uid = userDoc.id;
 
       if (paused) return;
       if (await checkInExists(uid, today)) return;
 
+      // 登録から3日以内のユーザーはスキップ（新規登録直後の誤検知を防ぐ）
+      if (createdAt) {
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        if (createdAt.toDate() > threeDaysAgo) return;
+      }
+
       const yesterdayCI  = await checkInExists(uid, yesterday);
       const twoDaysAgoCI = await checkInExists(uid, twoDaysAgo);
 
-      // ── warn: プッシュ通知 ────────────────────────────
+      // ── warn: プッシュ通知（昨日なし＋前日あり） ────────────
       if (!yesterdayCI && twoDaysAgoCI) {
         if (fcmToken) {
           await admin.messaging().send({
             token: fcmToken,
             notification: {
               title: '昨日から確認がありません',
-              body: '明日までに確認しないと、緊急連絡先へメールが届きます。',
+              body: '今日中に確認いただくか、本日夜9時までに確認がない場合、緊急連絡先へメールが届きます。',
             },
             apns: {
               payload: { aps: { sound: 'default', badge: 1 } },
             },
           });
         }
-        return;
+      }
+    }));
+
+    console.log(`dailyCheckJob (push) completed for ${usersSnap.size} users`);
+  });
+
+// ── ① -2 毎日定時メール (JST 21:00) - メール送信のみ ──────
+export const dailyEmailJob = functions
+  .region('asia-northeast1')
+  .pubsub
+  .schedule('0 12 * * *')     // UTC 12:00 = JST 21:00
+  .timeZone('UTC')
+  .onRun(async (_ctx) => {
+    const today      = getJSTDateString(0);
+    const yesterday  = getJSTDateString(-1);
+    const twoDaysAgo = getJSTDateString(-2);
+
+    const usersSnap = await db.collection('users').get();
+
+    await Promise.all(usersSnap.docs.map(async (userDoc) => {
+      const { paused, lastNotifiedAt, createdAt } = userDoc.data();
+      const uid = userDoc.id;
+
+      if (paused) return;
+      if (await checkInExists(uid, today)) return;
+
+      // 登録から3日以内のユーザーはスキップ
+      if (createdAt) {
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        if (createdAt.toDate() > threeDaysAgo) return;
       }
 
-      // ── alert: メール送信（エピソードにつき1回のみ） ────
+      const yesterdayCI  = await checkInExists(uid, yesterday);
+      const twoDaysAgoCI = await checkInExists(uid, twoDaysAgo);
+
+      // ── alert: メール送信（昨日なし＋前日もなし＋未送信） ────
       if (!yesterdayCI && !twoDaysAgoCI) {
         // lastNotifiedAt が null にリセットされるまで再送しない
         if (lastNotifiedAt) return;
@@ -88,12 +142,11 @@ export const dailyCheckJob = functions
         const contact  = contactDoc.data()!;
         const userName = await getUserName(uid);
 
-        await getResend().emails.send({
-          from: 'onboarding@resend.dev',
-          to:   contact.email,
-          subject: `${userName}さんの様子をご確認ください`,
-          html: emergencyEmailHtml(userName),
-        });
+        await sendEmail(
+          contact.email,
+          `${userName}さんの様子をご確認ください`,
+          emergencyEmailHtml(userName),
+        );
 
         await db.collection('users').doc(uid).update({
           lastNotifiedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -102,7 +155,7 @@ export const dailyCheckJob = functions
       }
     }));
 
-    console.log(`dailyCheckJob completed for ${usersSnap.size} users`);
+    console.log(`dailyEmailJob completed for ${usersSnap.size} users`);
   });
 
 // ── ② 签到时重置通知状态 ────────────────────────────────
@@ -141,12 +194,11 @@ export const sendContactConfirmEmail = functions
     const contact  = contactDoc.data()!;
     const userName = await getUserName(uid);
 
-    await getResend().emails.send({
-      from:    'onboarding@resend.dev',
-      to:      contact.email,
-      subject: `${userName}さんの緊急連絡先に登録されました`,
-      html:    confirmEmailHtml(userName, contact.name),
-    });
+    await sendEmail(
+      contact.email,
+      `${userName}さんの緊急連絡先に登録されました`,
+      confirmEmailHtml(userName, contact.name),
+    );
 
     await db.collection('users').doc(uid)
       .collection('contact').doc('main')
@@ -193,14 +245,75 @@ export const sendTestEmail = functions
     const contact  = contactDoc.data()!;
     const userName = await getUserName(uid);
 
-    await getResend().emails.send({
-      from:    'onboarding@resend.dev',
-      to:      contact.email,
-      subject: `[テスト] ${userName}さんの様子をご確認ください`,
-      html:    emergencyEmailHtml(userName),
-    });
+    await sendEmail(
+      contact.email,
+      `[テスト] ${userName}さんの様子をご確認ください`,
+      emergencyEmailHtml(userName),
+    );
 
     return { success: true };
+  });
+
+// ── ⑥ デバッグ：日付オフセットで dailyCheck を擬似実行 ──
+// offsetDays=2 → 推送テスト（今日チェックイン済みなら twoDaysAgo に記録あり）
+// offsetDays=3 → メールテスト（2日連続未確認を擬似）
+export const debugRunDailyCheck = functions
+  .region('asia-northeast1')
+  .https.onCall(async (data, ctx) => {
+    if (!ctx.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'ログインが必要です');
+    }
+    const uid = ctx.auth.uid;
+    const offsetDays: number = typeof data?.offsetDays === 'number' ? data.offsetDays : 2;
+
+    const simulatedToday = getJSTDateString(offsetDays);
+    const yesterday      = getJSTDateString(offsetDays - 1);
+    const twoDaysAgo     = getJSTDateString(offsetDays - 2);
+
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'ユーザーデータが見つかりません');
+    }
+    const { paused, fcmToken } = userDoc.data()!;
+
+    if (paused) return { result: 'skipped', reason: 'paused' };
+    if (await checkInExists(uid, simulatedToday)) {
+      return { result: 'skipped', reason: 'checked_in_on_simulated_today', simulatedToday };
+    }
+
+    const yesterdayCI  = await checkInExists(uid, yesterday);
+    const twoDaysAgoCI = await checkInExists(uid, twoDaysAgo);
+
+    if (!yesterdayCI && twoDaysAgoCI) {
+      if (!fcmToken) return { result: 'push_skipped', reason: 'no_fcm_token' };
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {
+          title: '[テスト] 昨日から確認がありません',
+          body: '明日までに確認しないと、緊急連絡先へメールが届きます。',
+        },
+        apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+      });
+      return { result: 'push_sent', simulatedToday };
+    }
+
+    if (!yesterdayCI && !twoDaysAgoCI) {
+      const contactDoc = await db
+        .collection('users').doc(uid)
+        .collection('contact').doc('main')
+        .get();
+      if (!contactDoc.exists) return { result: 'email_skipped', reason: 'no_contact' };
+      const contact  = contactDoc.data()!;
+      const userName = await getUserName(uid);
+      await sendEmail(
+        contact.email,
+        `[テスト] ${userName}さんの様子をご確認ください`,
+        emergencyEmailHtml(userName),
+      );
+      return { result: 'email_sent', simulatedToday };
+    }
+
+    return { result: 'no_action', reason: 'checked_in_recently', yesterdayCI, twoDaysAgoCI, simulatedToday };
   });
 
 // ── メールテンプレート ──────────────────────────────────
@@ -222,7 +335,7 @@ function emergencyEmailHtml(userName: string): string {
     </div>
     <div style="padding:32px">
       <p style="color:#3a3645;font-size:16px;line-height:1.8;margin:0 0 20px">
-        <strong>${userName}</strong>さんが、3日以上チェックインされていません。
+        <strong>${userName}</strong>さんが、2日連続でチェックインされていません。
       </p>
       <p style="color:#7a7390;font-size:14px;line-height:1.8;margin:0 0 24px">
         アプリへの毎日のチェックインが途切れています。念のため、お様子をご確認いただけますでしょうか。
@@ -238,7 +351,7 @@ function emergencyEmailHtml(userName: string): string {
     <div style="padding:16px 32px 24px;border-top:1px solid #e2dded;text-align:center">
       <p style="color:#b0a8c4;font-size:11px;margin:0">
         このメールへの返信は届きません。
-        配信停止をご希望の場合は <a href="mailto:unsubscribe@kyogen.app"
+        配信停止をご希望の場合は <a href="mailto:mamorinku.noreply@gmail.com"
         style="color:#7ba8b5">こちら</a> へご連絡ください。
       </p>
     </div>
@@ -282,7 +395,7 @@ function confirmEmailHtml(userName: string, contactName: string): string {
     </div>
     <div style="padding:16px 32px 24px;border-top:1px solid #e2dded;text-align:center">
       <p style="color:#b0a8c4;font-size:11px;margin:0">
-        配信停止をご希望の場合は <a href="mailto:unsubscribe@kyogen.app"
+        配信停止をご希望の場合は <a href="mailto:mamorinku.noreply@gmail.com"
         style="color:#7ba8b5">こちら</a> へご連絡ください。
       </p>
     </div>

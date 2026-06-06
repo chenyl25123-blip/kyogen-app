@@ -1,8 +1,11 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kyogen/demo_mode.dart';
+import 'package:kyogen/firebase_options.dart';
 
 class NotificationService {
   late final _fcm   = FirebaseMessaging.instance;
@@ -34,11 +37,16 @@ class NotificationService {
   Future<void> saveToken() async {
     if (kDemoMode) return;
     try {
-      final token = await _fcm.getToken();
+      // iOS: APNs token may not be ready immediately after launch; retry a few times
+      String? token;
+      for (int i = 0; i < 5 && token == null; i++) {
+        if (i > 0) await Future.delayed(const Duration(seconds: 2));
+        try { token = await _fcm.getToken(); } catch (_) {}
+      }
       if (token == null) return;
       await _updateToken(token);
-    } catch (_) {
-      // Simulator や APNs 未設定環境では getToken() が失敗する。無視してよい
+    } catch (e) {
+      debugPrint('saveToken error: $e');
     }
   }
 
@@ -70,4 +78,6 @@ class NotificationService {
 }
 
 @pragma('vm:entry-point')
-Future<void> _backgroundHandler(RemoteMessage message) async {}
+Future<void> _backgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}

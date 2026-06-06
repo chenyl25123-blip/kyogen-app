@@ -52,14 +52,23 @@ class AuthService {
         accessToken: auth.accessToken,
         idToken:     auth.idToken,
       );
-      final result = await currentUser.linkWithCredential(cred);
 
-      await _db.collection('users').doc(currentUser.uid).update({
-        'googleLinked': true,
-        'displayName':  result.user?.displayName ?? '',
-      });
-
-      return result;
+      try {
+        final result = await currentUser.linkWithCredential(cred);
+        await _db.collection('users').doc(currentUser.uid).update({
+          'googleLinked': true,
+          'displayName':  result.user?.displayName ?? '',
+        });
+        return result;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'credential-already-in-use') {
+          // このGoogle账号は既に別のFirebaseユーザーに紐付け済み → 直接ログイン
+          final result = await _auth.signInWithCredential(cred);
+          await _initUserDocument(result.user!.uid, googleLinked: true);
+          return result;
+        }
+        rethrow;
+      }
     } catch (e) {
       rethrow;
     }
