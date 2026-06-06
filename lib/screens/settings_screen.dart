@@ -309,6 +309,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _confirmDeleteAccount() async {
+    // 第一段確認
+    final step1 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bg2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('アカウントを削除しますか？',
+            style: TextStyle(color: AppColors.text)),
+        content: const Text(
+          'この操作は取り消せません。\nすべてのデータ（プロフィール・連絡先・確認履歴）が完全に削除されます。',
+          style: TextStyle(color: AppColors.text2, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル',
+                style: TextStyle(color: AppColors.text3)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('続ける',
+                style: TextStyle(
+                    color: AppColors.terra, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (step1 != true || !mounted) return;
+
+    // 第二段確認（最終）
+    final step2 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bg2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('本当に削除しますか？',
+            style: TextStyle(color: AppColors.terra)),
+        content: const Text(
+          'アカウントとすべてのデータを完全に削除します。\nこの操作は元に戻せません。',
+          style: TextStyle(color: AppColors.text2, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル',
+                style: TextStyle(color: AppColors.text3)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('削除する',
+                style: TextStyle(
+                    color: AppColors.terra, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (step2 != true || !mounted) return;
+
+    try {
+      await _authService?.deleteAccount();
+    } catch (_) {
+      if (mounted) {
+        _showSnack('削除に失敗しました。一度ログアウトして再ログイン後にお試しください');
+      }
+    }
+  }
+
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -554,6 +622,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+
+                        // ── アカウント削除 ──────────────────
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _confirmDeleteAccount,
+                          child: const Center(
+                            child: Text(
+                              'アカウントを削除',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.terra,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                                decorationColor: AppColors.terra,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 40),
                       ]),
                     ),
@@ -608,17 +695,19 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         'text': _textCtrl.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
       });
-      if (mounted)
+      if (mounted) {
         setState(() {
           _submitted = true;
           _submitting = false;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _submitting = false;
           _validationMsg = '送信に失敗しました。もう一度お試しください';
         });
+      }
     }
   }
 

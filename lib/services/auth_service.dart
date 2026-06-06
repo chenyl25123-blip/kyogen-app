@@ -80,6 +80,56 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // ── アカウント完全削除 ────────────────────────────────
+  // Firestore データをすべて消してから Auth ユーザーを削除する。
+  // Google ユーザーで requires-recent-login が出た場合は再認証して再試行。
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final uid = user.uid;
+
+    // 1. Firestore: checkins サブコレクションを一括削除
+    final checkinsSnap = await _db
+        .collection('users')
+        .doc(uid)
+        .collection('checkins')
+        .get();
+    final batch = _db.batch();
+    for (final doc in checkinsSnap.docs) {
+      batch.delete(doc.reference);
+    }
+    // 2. contact/main と users/{uid} を削除
+    batch.delete(
+        _db.collection('users').doc(uid).collection('contact').doc('main'));
+    batch.delete(_db.collection('users').doc(uid));
+    await batch.commit();
+
+    // 3. Firebase Auth アカウントを削除（要: 最近の認証）
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        // Google ユーザーのみ: サイレント再認証してリトライ
+        final account = await _googleSignIn.signInSilently();
+        if (account != null) {
+          final auth = await account.authentication;
+          final cred = GoogleAuthProvider.credential(
+            accessToken: auth.accessToken,
+            idToken: auth.idToken,
+          );
+          await user.reauthenticateWithCredential(cred);
+          await user.delete();
+        } else {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
+
+    await _googleSignIn.signOut();
+  }
+
   // ── ユーザードキュメント初期化 ────────────────────────
   Future<void> _initUserDocument(String uid, {bool googleLinked = false}) async {
     final ref = _db.collection('users').doc(uid);
