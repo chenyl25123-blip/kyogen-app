@@ -1,14 +1,20 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:kyogen/main.dart';
+import 'package:kyogen/common_widgets.dart';
 
 void main() {
-  testWidgets('KyogenApp renders the startup frame', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const KyogenApp());
-    await tester.pump();
+  testWidgets('AppCard renders its child', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppCard(
+            child: Text('まもりんく'),
+          ),
+        ),
+      ),
+    );
 
-    expect(find.byType(KyogenApp), findsOneWidget);
+    expect(find.text('まもりんく'), findsOneWidget);
+    expect(find.byType(AppCard), findsOneWidget);
   });
 }

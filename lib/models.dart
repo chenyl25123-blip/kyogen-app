@@ -74,6 +74,7 @@ class AppUser {
   final String? fcmToken;
   final bool paused;
   final bool googleLinked;
+  final bool phoneLinked;
   final DateTime? lastNotifiedAt;
   final int emailSentCount;
 
@@ -83,6 +84,7 @@ class AppUser {
     this.fcmToken,
     this.paused = false,
     this.googleLinked = false,
+    this.phoneLinked = false,
     this.lastNotifiedAt,
     this.emailSentCount = 0,
   });
@@ -95,6 +97,7 @@ class AppUser {
       fcmToken:       d['fcmToken'],
       paused:         d['paused'] ?? false,
       googleLinked:   d['googleLinked'] ?? false,
+      phoneLinked:    d['phoneLinked'] ?? false,
       lastNotifiedAt: d['lastNotifiedAt'] != null
                       ? (d['lastNotifiedAt'] as Timestamp).toDate() : null,
       emailSentCount: d['emailSentCount'] ?? 0,
@@ -107,6 +110,7 @@ class AppUser {
     'fcmToken':       fcmToken,
     'paused':         paused,
     'googleLinked':   googleLinked,
+    'phoneLinked':    phoneLinked,
     'lastNotifiedAt': lastNotifiedAt != null
                       ? Timestamp.fromDate(lastNotifiedAt!) : null,
     'emailSentCount': emailSentCount,
@@ -116,6 +120,7 @@ class AppUser {
     String? fcmToken,
     bool? paused,
     bool? googleLinked,
+    bool? phoneLinked,
   }) {
     return AppUser(
       uid:            uid,
@@ -123,6 +128,7 @@ class AppUser {
       fcmToken:       fcmToken ?? this.fcmToken,
       paused:         paused ?? this.paused,
       googleLinked:   googleLinked ?? this.googleLinked,
+      phoneLinked:    phoneLinked ?? this.phoneLinked,
       lastNotifiedAt: lastNotifiedAt,
       emailSentCount: emailSentCount,
     );

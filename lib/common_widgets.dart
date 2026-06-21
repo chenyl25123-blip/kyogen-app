@@ -106,7 +106,7 @@ class SettingsRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
           ),
@@ -249,6 +249,54 @@ class GoogleSignInButton extends StatelessWidget {
                 ),
               ],
             ),
+      ),
+    );
+  }
+}
+
+// ── Phone サインインボタン ────────────────────────────
+class PhoneSignInButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const PhoneSignInButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bg2,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.border, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.phone_iphone_outlined, size: 20, color: AppColors.text),
+            SizedBox(width: 10),
+            Text(
+              '電話番号でログイン',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

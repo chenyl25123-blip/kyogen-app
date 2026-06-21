@@ -1,6 +1,30 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kyogen/utils/phone_number.dart';
+
+class AuthFlowException implements Exception {
+  final String code;
+  final String message;
+  final Object? cause;
+
+  const AuthFlowException(this.code, this.message, {this.cause});
+
+  @override
+  String toString() => 'AuthFlowException($code): $message';
+}
+
+class PhoneVerificationSession {
+  final String verificationId;
+  final int? resendToken;
+
+  const PhoneVerificationSession({
+    required this.verificationId,
+    this.resendToken,
+  });
+}
 
 class AuthService {
   final _auth        = FirebaseAuth.instance;
@@ -74,6 +98,100 @@ class AuthService {
     }
   }
 
+  // ── 電話番号ログイン: SMS 送信 ────────────────────────
+  Future<PhoneVerificationSession> sendPhoneVerificationCode(
+    String phoneNumber, {
+    int? forceResendingToken,
+  }) async {
+    final e164PhoneNumber = _toE164OrThrow(phoneNumber);
+    final completer = Completer<PhoneVerificationSession>();
+
+    await _auth.verifyPhoneNumber(
+      phoneNumber: e164PhoneNumber,
+      forceResendingToken: forceResendingToken,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (_) {
+        // iOS では通常 codeSent を使う。自動検証はここでは連携しない。
+      },
+      verificationFailed: (e) {
+        if (!completer.isCompleted) {
+          completer.completeError(
+            AuthFlowException(
+              'firebase/${e.code}',
+              'Failed to send phone verification code.',
+              cause: e,
+            ),
+          );
+        }
+      },
+      codeSent: (verificationId, resendToken) {
+        if (!completer.isCompleted) {
+          completer.complete(
+            PhoneVerificationSession(
+              verificationId: verificationId,
+              resendToken: resendToken,
+            ),
+          );
+        }
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        if (!completer.isCompleted) {
+          completer.complete(
+            PhoneVerificationSession(verificationId: verificationId),
+          );
+        }
+      },
+    );
+
+    return completer.future;
+  }
+
+  // ── 匿名 → 電話番号アカウント昇格 ────────────────────
+  Future<UserCredential> linkPhoneAccount({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw const AuthFlowException(
+        'auth/no-current-user',
+        'Cannot link phone account because no Firebase user is signed in.',
+      );
+    }
+
+    final normalizedCode = smsCode.trim();
+    if (normalizedCode.isEmpty) {
+      throw const AuthFlowException(
+        'phone/empty-sms-code',
+        'SMS verification code is empty.',
+      );
+    }
+
+    final cred = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: normalizedCode,
+    );
+
+    try {
+      final result = await currentUser.linkWithCredential(cred);
+      await _db.collection('users').doc(currentUser.uid).update({
+        'phoneLinked': true,
+      });
+      return result;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'credential-already-in-use') {
+        final result = await _auth.signInWithCredential(cred);
+        await _initUserDocument(result.user!.uid, phoneLinked: true);
+        return result;
+      }
+      throw AuthFlowException(
+        'firebase/${e.code}',
+        'Failed to link phone credential.',
+        cause: e,
+      );
+    }
+  }
+
   // ── サインアウト ──────────────────────────────────────
   Future<void> signOut() async {
     await _googleSignIn.signOut();
@@ -131,7 +249,11 @@ class AuthService {
   }
 
   // ── ユーザードキュメント初期化 ────────────────────────
-  Future<void> _initUserDocument(String uid, {bool googleLinked = false}) async {
+  Future<void> _initUserDocument(
+    String uid, {
+    bool googleLinked = false,
+    bool phoneLinked = false,
+  }) async {
     final ref = _db.collection('users').doc(uid);
     final doc = await ref.get();
     if (!doc.exists) {
@@ -141,11 +263,27 @@ class AuthService {
         'fcmToken':       null,
         'paused':         false,
         'googleLinked':   googleLinked,
+        'phoneLinked':    phoneLinked,
         'lastNotifiedAt': null,
         'emailSentCount': 0,
       });
-    } else if (googleLinked) {
-      await ref.update({'googleLinked': true});
+    } else if (googleLinked || phoneLinked) {
+      await ref.update({
+        if (googleLinked) 'googleLinked': true,
+        if (phoneLinked) 'phoneLinked': true,
+      });
+    }
+  }
+
+  String _toE164OrThrow(String phoneNumber) {
+    try {
+      return toE164JapanPhoneNumber(phoneNumber);
+    } on PhoneNumberFormatException catch (e) {
+      throw AuthFlowException(
+        e.code,
+        'Invalid Japan mobile phone number.',
+        cause: e,
+      );
     }
   }
 }

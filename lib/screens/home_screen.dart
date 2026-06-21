@@ -19,7 +19,6 @@ class HomeScreenState extends State<HomeScreen>
 
   CheckInStatus _status = CheckInStatus.pending;
   Map<String, bool> _history = {};
-  bool _loading    = false;
   bool _checkingIn = false;
   String? _lastCheckInLabel;
 
@@ -81,7 +80,6 @@ class HomeScreenState extends State<HomeScreen>
       CheckInStatus.warn    => 1200,
       CheckInStatus.alert   => 900,
       CheckInStatus.paused  => 3200,
-      _ => 1800,
     };
     _pulseCtrl.duration = Duration(milliseconds: ms);
     _pulseCtrl.repeat(reverse: true);
@@ -92,21 +90,6 @@ class HomeScreenState extends State<HomeScreen>
     return '${jst.year}-${jst.month.toString().padLeft(2,'0')}-${jst.day.toString().padLeft(2,'0')}';
   }
 
-  void _debugSimulateNextDay() {
-    const order = [
-      CheckInStatus.safe,
-      CheckInStatus.pending,
-      CheckInStatus.warn,
-      CheckInStatus.alert,
-    ];
-    final next = order[(order.indexOf(_status) + 1) % order.length];
-    _updatePulseSpeed(next);
-    setState(() {
-      _status = next;
-      _lastCheckInLabel = next == CheckInStatus.safe ? 'たった今' : 'まだ確認していません';
-    });
-  }
-
   String _buildLastCheckInLabel(Map<String, bool> history) {
     final jst = DateTime.now().toUtc().add(const Duration(hours: 9));
     for (int i = 0; i < history.length; i++) {
@@ -115,7 +98,7 @@ class HomeScreenState extends State<HomeScreen>
       if (history[key] == true) {
         if (i == 0) return 'たった今';
         if (i == 1) return '昨日';
-        return '${i}日前';
+        return '$i日前';
       }
     }
     return 'まだ確認していません';
@@ -193,21 +176,19 @@ class HomeScreenState extends State<HomeScreen>
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.slate))
-              : Column(
-                  children: [
-                    _buildHeader(),
-                    if (_status == CheckInStatus.paused) _buildPauseBanner(),
-                    // 円ボタンを先頭に（画面の主役）
-                    Expanded(child: _buildCheckInButton()),
-                    // ステータステキストは円の下
-                    _buildStatusArea(),
-                    _buildCalendar(),
-                    _buildLastCheckIn(),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              if (_status == CheckInStatus.paused) _buildPauseBanner(),
+              // 円ボタンを先頭に（画面の主役）
+              Expanded(child: _buildCheckInButton()),
+              // ステータステキストは円の下
+              _buildStatusArea(),
+              _buildCalendar(),
+              _buildLastCheckIn(),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -355,7 +336,7 @@ class HomeScreenState extends State<HomeScreen>
               // パルスリング（未確認時）
               if (!isSafe) AnimatedBuilder(
                 animation: _pulseAnim,
-                builder: (_, __) => Transform.scale(
+                builder: (_, _) => Transform.scale(
                   scale: _pulseAnim.value,
                   child: Container(
                     width: 224, height: 224,

@@ -8,6 +8,7 @@ import 'package:kyogen/demo_mode.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
 import 'package:kyogen/utils/email_validator.dart';
+import 'package:kyogen/utils/phone_number.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -22,7 +23,7 @@ class _ContactScreenState extends State<ContactScreen> {
 
   Contact? _contact;
   bool _loading = true;
-  bool _googleLinked = false;
+  bool _accountLinked = false;
   bool _linkingGoogle = false;
 
   @override
@@ -33,7 +34,7 @@ class _ContactScreenState extends State<ContactScreen> {
       return;
     }
     _loadData();
-    _checkGoogleLink();
+    _checkAccountLink();
   }
 
   Future<void> _loadData() async {
@@ -53,12 +54,12 @@ class _ContactScreenState extends State<ContactScreen> {
     }
   }
 
-  void _checkGoogleLink() {
+  void _checkAccountLink() {
     final user = _authService?.currentUser;
     if (user != null) {
       setState(() {
-        _googleLinked = user.providerData.any(
-          (p) => p.providerId == 'google.com',
+        _accountLinked = user.providerData.any(
+          (p) => p.providerId == 'google.com' || p.providerId == 'phone',
         );
       });
     }
@@ -70,13 +71,27 @@ class _ContactScreenState extends State<ContactScreen> {
     try {
       final result = await _authService!.linkGoogleAccount();
       if (result != null) {
-        setState(() => _googleLinked = true);
+        setState(() => _accountLinked = true);
         _showSnack('Googleアカウントと連携しました ✓');
       }
     } catch (e) {
-      _showSnack('連携に失敗しました。もう一度お試しください');
+      _showSnack('Google連携に失敗しました: $e');
     } finally {
       setState(() => _linkingGoogle = false);
+    }
+  }
+
+  Future<void> _onPhoneLogin() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PhoneLoginSheet(authService: _authService!),
+    );
+    if (result == true) {
+      HapticFeedback.mediumImpact();
+      setState(() => _accountLinked = true);
+      _showSnack('電話番号と連携しました ✓');
     }
   }
 
@@ -168,14 +183,14 @@ class _ContactScreenState extends State<ContactScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.slate),
               )
-            : !_googleLinked
+            : !_accountLinked
             ? _buildLoginGate()
             : _buildContactContent(),
       ),
     );
   }
 
-  // ── Google 未連携：ログインゲート ─────────────────────
+  // ── アカウント未連携：ログインゲート ─────────────────
   Widget _buildLoginGate() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -207,7 +222,7 @@ class _ContactScreenState extends State<ContactScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Googleアカウントでログインすると\n緊急連絡先を設定できます。\n機種変更後も設定が引き継がれます。',
+            'Googleまたは電話番号でログインすると\n緊急連絡先を設定できます。\n機種変更後も設定が引き継がれます。',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: AppColors.text2, height: 1.7),
           ),
@@ -216,6 +231,8 @@ class _ContactScreenState extends State<ContactScreen> {
             onPressed: _onGoogleLogin,
             isLoading: _linkingGoogle,
           ),
+          const SizedBox(height: 12),
+          PhoneSignInButton(onPressed: _onPhoneLogin),
           const Spacer(flex: 3),
         ],
       ),
@@ -247,7 +264,7 @@ class _ContactScreenState extends State<ContactScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // ── Google 連携済みバッジ ──────────
+              // ── アカウント連携済みバッジ ───────
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -269,7 +286,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Googleアカウントと連携済み',
+                      'アカウント連携済み',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.slate,
@@ -478,6 +495,219 @@ class _ContactScreenState extends State<ContactScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PhoneLoginSheet extends StatefulWidget {
+  final AuthService authService;
+
+  const _PhoneLoginSheet({required this.authService});
+
+  @override
+  State<_PhoneLoginSheet> createState() => _PhoneLoginSheetState();
+}
+
+class _PhoneLoginSheetState extends State<_PhoneLoginSheet> {
+  final _phoneCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  PhoneVerificationSession? _session;
+  String? _error;
+  bool _sending = false;
+  bool _verifying = false;
+
+  @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      final session = await widget.authService.sendPhoneVerificationCode(
+        _phoneCtrl.text,
+        forceResendingToken: _session?.resendToken,
+      );
+      if (!mounted) return;
+      setState(() => _session = session);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _describePhoneError(e));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    final session = _session;
+    if (session == null) {
+      setState(() => _error = 'phone/no-verification-session: SMSを先に送信してください');
+      return;
+    }
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) {
+      setState(() => _error = 'phone/empty-sms-code: 認証コードを入力してください');
+      return;
+    }
+
+    setState(() {
+      _verifying = true;
+      _error = null;
+    });
+    try {
+      await widget.authService.linkPhoneAccount(
+        verificationId: session.verificationId,
+        smsCode: code,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _describePhoneError(e));
+    } finally {
+      if (mounted) setState(() => _verifying = false);
+    }
+  }
+
+  String _describePhoneError(Object error) {
+    if (error is AuthFlowException) {
+      return '${error.code}: ${error.message}';
+    }
+    if (error is PhoneNumberFormatException) {
+      return '${error.code}: ${error.message}';
+    }
+    return 'phone/unknown: $error';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final codeSent = _session != null;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: bottom),
+      decoration: const BoxDecoration(
+        color: AppColors.bg2,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border2,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('電話番号でログイン', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            const Text(
+              '日本の携帯番号にSMS認証コードを送信します',
+              style: TextStyle(fontSize: 12, color: AppColors.text2),
+            ),
+            const SizedBox(height: 20),
+            const SectionLabel('電話番号'),
+            TextFormField(
+              controller: _phoneCtrl,
+              keyboardType: TextInputType.phone,
+              enabled: !_sending && !_verifying,
+              decoration: const InputDecoration(hintText: '090-1234-5678'),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return '電話番号を入力してください';
+                if (!isValidJapanMobileNumber(v)) {
+                  return '070/080/090から始まる携帯番号を入力してください';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+            if (codeSent) ...[
+              const SectionLabel('認証コード'),
+              TextFormField(
+                controller: _codeCtrl,
+                keyboardType: TextInputType.number,
+                enabled: !_verifying,
+                decoration: const InputDecoration(hintText: '123456'),
+              ),
+              const SizedBox(height: 14),
+            ],
+            if (_error != null) ...[
+              Text(
+                _error!,
+                style: const TextStyle(
+                  color: AppColors.terra,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _sending || _verifying
+                    ? null
+                    : codeSent
+                        ? _verifyCode
+                        : _sendCode,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.slate,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: const StadiumBorder(),
+                  elevation: 0,
+                ),
+                child: _sending || _verifying
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        codeSent ? '認証してログイン' : 'SMSを送信',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _sending || _verifying
+                    ? null
+                    : () => Navigator.pop(context, false),
+                child: const Text(
+                  'キャンセル',
+                  style: TextStyle(color: AppColors.text3, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

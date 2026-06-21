@@ -219,6 +219,7 @@ export const onUserCreated = functions
       fcmToken:       null,
       paused:         false,
       googleLinked:   user.providerData.some(p => p.providerId === 'google.com'),
+      phoneLinked:    user.providerData.some(p => p.providerId === 'phone'),
       lastNotifiedAt: null,
       emailSentCount: 0,
     }, { merge: true });
