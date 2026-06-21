@@ -7,6 +7,7 @@ import 'package:kyogen/services/auth_service.dart';
 import 'package:kyogen/demo_mode.dart';
 import 'package:kyogen/theme/app_theme.dart';
 import 'package:kyogen/common_widgets.dart';
+import 'package:kyogen/utils/email_validator.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -41,11 +42,12 @@ class _ContactScreenState extends State<ContactScreen> {
       final contact = await _contactService.getContact().timeout(
         const Duration(seconds: 8),
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _contact = contact;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -613,11 +615,9 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
               decoration: const InputDecoration(hintText: 'hanako@example.com'),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'メールを入力してください';
-                final emailRegex = RegExp(
-                  r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+\.[a-zA-Z]{2,}$',
-                );
-                if (!emailRegex.hasMatch(v.trim()))
+                if (!isValidEmailAddress(v)) {
                   return '正しいメールアドレスを入力してください';
+                }
                 return null;
               },
             ),
