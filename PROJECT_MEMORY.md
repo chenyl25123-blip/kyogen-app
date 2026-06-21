@@ -17,15 +17,21 @@ Date: 2026-06-21
 - Firebase project: `projects-696e9`.
 - Bundle ID: `jp.kyogen.kyogen`.
 - GitHub repo: `chenyl25123-blip/kyogen-app`.
-- Active branch: `codex/email-validator-hotfix`.
+- Active test branch: `codex/email-validator-hotfix`.
 - Remote branch pushed: `origin/codex/email-validator-hotfix`.
-- Latest pushed commit on this branch: `e669d441d9006de861d6cba0da6f65d0d6fba076`.
+- Latest pushed commit on this branch: `399105c`.
+- Branch policy: treat `codex/email-validator-hotfix` as the test branch. Do not merge to the production branch until tests pass and the user explicitly approves the merge.
 - App Store review previously rejected because iPhone login was missing.
 - User added/confirmed iPhone login requirement; branch now includes phone login support and emergency contact email validation fix.
 - User wants future Claude/Codex development to continue on a branch and complete tests before reporting done.
 - User prefers Chinese communication; key error messages can remain in English for searchability.
 
 ## Recent Work
+
+### 2026-06-21
+
+- Defined `codex/email-validator-hotfix` as the current test branch.
+- Merge rule: test branch changes require passing verification and explicit user approval before merging to the production branch.
 
 ### 2026-06-21
 
@@ -65,5 +71,6 @@ Date: 2026-06-21
 
 - Open PR from `codex/email-validator-hotfix`:
   `https://github.com/chenyl25123-blip/kyogen-app/pull/new/codex/email-validator-hotfix`
+- Keep the PR/test branch unmerged until user approval after testing.
 - Review the App Store upload image before final release; user asked to be reminded to replace it.
 - After merge, build and submit the updated iOS version for review.
