@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
+import { shouldSendEmergencyEmail, shouldSendMorningPush } from './checkin_policy';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -49,6 +50,12 @@ async function checkInExists(uid: string, date: string): Promise<boolean> {
   return doc.exists;
 }
 
+function isWithinFirstThreeDays(createdAt: admin.firestore.Timestamp | undefined): boolean {
+  if (!createdAt) return false;
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  return createdAt.toDate() > threeDaysAgo;
+}
+
 // ── ① 毎日定時チェック (JST 09:00) - 推送のみ ─────────────
 export const dailyCheckJob = functions
   .region('asia-northeast1')
@@ -66,20 +73,18 @@ export const dailyCheckJob = functions
       const { paused, fcmToken, createdAt } = userDoc.data();
       const uid = userDoc.id;
 
-      if (paused) return;
-      if (await checkInExists(uid, today)) return;
-
-      // 登録から3日以内のユーザーはスキップ（新規登録直後の誤検知を防ぐ）
-      if (createdAt) {
-        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-        if (createdAt.toDate() > threeDaysAgo) return;
-      }
-
+      const todayCI = await checkInExists(uid, today);
       const yesterdayCI  = await checkInExists(uid, yesterday);
       const twoDaysAgoCI = await checkInExists(uid, twoDaysAgo);
 
       // ── warn: プッシュ通知（昨日なし＋前日あり） ────────────
-      if (!yesterdayCI && twoDaysAgoCI) {
+      if (shouldSendMorningPush({
+        checkedInToday: todayCI,
+        checkedInYesterday: yesterdayCI,
+        checkedInTwoDaysAgo: twoDaysAgoCI,
+        paused: paused === true,
+        isNewUser: isWithinFirstThreeDays(createdAt),
+      })) {
         if (fcmToken) {
           await admin.messaging().send({
             token: fcmToken,
@@ -115,23 +120,19 @@ export const dailyEmailJob = functions
       const { paused, lastNotifiedAt, createdAt } = userDoc.data();
       const uid = userDoc.id;
 
-      if (paused) return;
-      if (await checkInExists(uid, today)) return;
-
-      // 登録から3日以内のユーザーはスキップ
-      if (createdAt) {
-        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-        if (createdAt.toDate() > threeDaysAgo) return;
-      }
-
+      const todayCI = await checkInExists(uid, today);
       const yesterdayCI  = await checkInExists(uid, yesterday);
       const twoDaysAgoCI = await checkInExists(uid, twoDaysAgo);
 
-      // ── alert: メール送信（昨日なし＋前日もなし＋未送信） ────
-      if (!yesterdayCI && !twoDaysAgoCI) {
-        // lastNotifiedAt が null にリセットされるまで再送しない
-        if (lastNotifiedAt) return;
-
+      // ── alert: メール送信（朝の推送条件と同じ日の夜＋未送信） ────
+      if (shouldSendEmergencyEmail({
+        checkedInToday: todayCI,
+        checkedInYesterday: yesterdayCI,
+        checkedInTwoDaysAgo: twoDaysAgoCI,
+        paused: paused === true,
+        isNewUser: isWithinFirstThreeDays(createdAt),
+        alreadyNotified: Boolean(lastNotifiedAt),
+      })) {
         const contactDoc = await db
           .collection('users').doc(uid)
           .collection('contact').doc('main')

@@ -9,6 +9,42 @@ Purpose: record known problems and proven fixes so future agent windows can reso
 - Include exact error text when useful.
 - Do not add speculation; only record confirmed issues.
 
+## Emergency Email Sent Without Matching Morning Push
+
+Symptom:
+
+- After a user checked in again, a later missed-check-in cycle could produce an emergency email without the expected morning push.
+
+Root cause:
+
+- Morning push used this condition:
+
+```text
+today not checked, yesterday not checked, two days ago checked
+```
+
+- Emergency email used a different condition:
+
+```text
+today not checked, yesterday not checked, two days ago not checked, lastNotifiedAt is null
+```
+
+- Because check-in resets `lastNotifiedAt`, a stale long-missed state could become email-eligible without being on the same day as the morning push.
+
+Fix:
+
+- Use the same missed-day policy for morning push and emergency email.
+- Emergency email adds only one extra guard: `alreadyNotified == false`.
+- Shared policy file: `functions/src/checkin_policy.ts`.
+
+Verification:
+
+```bash
+cd functions && npm test
+flutter test
+flutter analyze
+```
+
 ## GitHub Push Fails Over HTTPS
 
 Symptom:
@@ -113,4 +149,3 @@ Verification:
 ```bash
 cd functions && npm run build
 ```
-

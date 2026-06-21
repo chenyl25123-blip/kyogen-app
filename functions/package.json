@@ -2,6 +2,7 @@
   "name": "functions",
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node test/checkin_policy_test.js",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
