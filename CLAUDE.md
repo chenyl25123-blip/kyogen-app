@@ -7,6 +7,15 @@
 - **Win11**: コード編集 → `git push`（メインのClaude Codeセッション）
 - **Mac (Monterey / Intel)**: Mac固有の環境対応修正 → `git push` も可
 
+## 継続作業の入口
+新しい Claude / Codex セッションでは、作業前に必ず以下を読むこと。
+
+- `PROJECT_MEMORY.md`: 最新のプロジェクト文脈、現在のブランチ、次の作業
+- `PITFALLS.md`: 既知の問題、原因、解決策、検証コマンド
+
+重要な会話・判断・リリース状態が変わったら `PROJECT_MEMORY.md` を更新する。
+一度踏んだ問題と解決策は `PITFALLS.md` に残す。
+
 ## ⚠️ Mac Claude への必須ルール
 **コードを変更・pushする前に必ず `git pull` すること。**
 Win11側と同時に作業しているため、pullなしでpushすると競合が発生する。
