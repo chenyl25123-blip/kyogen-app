@@ -9,6 +9,32 @@ Purpose: record known problems and proven fixes so future agent windows can reso
 - Include exact error text when useful.
 - Do not add speculation; only record confirmed issues.
 
+## Privacy Policy Mail Service Drift
+
+Symptom:
+
+- The Cloud Functions implementation used Gmail SMTP, but in-app privacy text still mentioned Resend.
+
+Root cause:
+
+- The mail provider changed in code/config, but all user-facing legal text was not updated at the same time.
+
+Fix:
+
+- Keep these files consistent:
+  - `lib/screens/legal_screen.dart`
+  - `public/privacy.html`
+  - `functions/.env.example`
+  - `functions/src/index.ts`
+- Add a static consistency check in `functions/test/mail_service_consistency_test.js`.
+
+Verification:
+
+```bash
+cd functions && npm test
+rg -n "Resend" lib/screens/legal_screen.dart public/privacy.html functions/.env.example functions/src/index.ts
+```
+
 ## Emergency Email Sent Without Matching Morning Push
 
 Symptom:

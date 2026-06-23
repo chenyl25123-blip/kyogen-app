@@ -19,7 +19,7 @@ Date: 2026-06-21
 - GitHub repo: `chenyl25123-blip/kyogen-app`.
 - Active test branch: `codex/email-validator-hotfix`.
 - Remote branch pushed: `origin/codex/email-validator-hotfix`.
-- Latest pushed commit on this branch: `399105c`.
+- Latest pushed commit on this branch: check `git log -1 --oneline`.
 - Branch policy: treat `codex/email-validator-hotfix` as the test branch. Do not merge to the production branch until tests pass and the user explicitly approves the merge.
 - App Store review previously rejected because iPhone login was missing.
 - User added/confirmed iPhone login requirement; branch now includes phone login support and emergency contact email validation fix.
@@ -27,6 +27,21 @@ Date: 2026-06-21
 - User prefers Chinese communication; key error messages can remain in English for searchability.
 
 ## Recent Work
+
+### 2026-06-23
+
+- Test branch change for today's P0/P1 work:
+  - Privacy policy mail service wording now matches actual implementation: Gmail SMTP.
+  - `lib/screens/legal_screen.dart`, `public/privacy.html`, `functions/.env.example`, and `functions/src/index.ts` are covered by a consistency test.
+  - Contact setup now guides users to send a test email after saving a contact.
+  - Contact detail screen now has a visible test email action using `sendTestEmail`.
+- Added Functions static checks:
+  - `functions/test/mail_service_consistency_test.js`
+  - `functions/test/contact_test_mail_flow_test.js`
+- Verification passed:
+  - `cd functions && npm test`
+  - `flutter analyze`
+  - `flutter test`
 
 ### 2026-06-21
 

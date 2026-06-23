@@ -26,12 +26,10 @@ class ContactService {
     return Contact.fromFirestore(doc);
   }
 
-  // ── 連絡先の保存（確認メールは Cloud Function が自動送信）
+  // ── 連絡先の保存
   Future<void> saveContact(Contact contact) async {
     if (kDemoMode) { _demoContact = contact; return; }
     await _contactRef.set(contact.toFirestore());
-    // Firestore の onContactSaved トリガーが自動で
-    // 確認メールを Resend 経由で送信する
   }
 
   // ── 連絡先の削除 ──────────────────────────────────────

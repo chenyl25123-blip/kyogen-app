@@ -41,7 +41,7 @@ git push
 - Flutter (iOS優先) + Dart 3.x
 - Firebase Auth (匿名ログイン) + Cloud Firestore + FCM
 - Cloud Functions (TypeScript): `functions/src/index.ts`
-- Resend API (メール送信)
+- Gmail SMTP (メール送信)
 - Codemagic CI/CD → unsigned IPA → Sideloadly/爱思助手でiPhoneに投入
 
 ## Firebase

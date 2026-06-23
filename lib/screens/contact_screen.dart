@@ -25,6 +25,7 @@ class _ContactScreenState extends State<ContactScreen> {
   bool _loading = true;
   bool _accountLinked = false;
   bool _linkingGoogle = false;
+  bool _sendingTestEmail = false;
 
   @override
   void initState() {
@@ -112,12 +113,67 @@ class _ContactScreenState extends State<ContactScreen> {
             region: 'asia-northeast1',
           ).httpsCallable('sendContactConfirmEmail').call();
           _showSnack('保存しました。確認メールを送信しました 📨');
+          if (mounted) await _promptTestEmail();
         } catch (_) {
           _showSnack('保存しました（確認メールの送信に失敗しました）');
         }
       } else {
         _showSnack('保存しました ✓');
       }
+    }
+  }
+
+  Future<void> _promptTestEmail() async {
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bg2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'テストメールを送信しますか？',
+          style: TextStyle(color: AppColors.text),
+        ),
+        content: const Text(
+          '緊急時に確実に届くか、今すぐ登録した連絡先へテストメールを送信できます。',
+          style: TextStyle(color: AppColors.text2, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'あとで',
+              style: TextStyle(color: AppColors.text3),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'テストメールを送信',
+              style: TextStyle(
+                color: AppColors.slate,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (shouldSend == true) await _sendTestEmail();
+  }
+
+  Future<void> _sendTestEmail() async {
+    if (_sendingTestEmail) return;
+    setState(() => _sendingTestEmail = true);
+    HapticFeedback.mediumImpact();
+    try {
+      await FirebaseFunctions.instanceFor(
+        region: 'asia-northeast1',
+      ).httpsCallable('sendTestEmail').call();
+      if (mounted) _showSnack('テストメールを送信しました ✓');
+    } catch (e) {
+      if (mounted) _showSnack('テストメールの送信に失敗しました: $e');
+    } finally {
+      if (mounted) setState(() => _sendingTestEmail = false);
     }
   }
 
@@ -461,6 +517,83 @@ class _ContactScreenState extends State<ContactScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
+
+                AppCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.peachDim,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.outgoing_mail,
+                          color: AppColors.peach,
+                          size: 19,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'テストメール',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              '登録した連絡先に届くか確認できます',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.text3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: _sendingTestEmail ? null : _sendTestEmail,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.slate,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: _sendingTestEmail
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.slate,
+                                ),
+                              )
+                            : const Text(
+                                '送信',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
 
                 AppCard(
                   padding: EdgeInsets.zero,
@@ -823,7 +956,7 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
             Text('連絡先を編集', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 6),
             const Text(
-              '保存すると相手に確認メールが自動送信されます',
+              '保存後にテストメールを送信して、相手に届くか確認できます',
               style: TextStyle(fontSize: 12, color: AppColors.text2),
             ),
             const SizedBox(height: 20),
@@ -884,7 +1017,7 @@ class _ContactEditSheetState extends State<_ContactEditSheet> {
                         ),
                       )
                     : const Text(
-                        '保存して確認メールを送信',
+                        '保存する',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
